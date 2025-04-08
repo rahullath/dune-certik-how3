@@ -1,0 +1,251 @@
+/**
+ * Custom styles for How3.io
+ * Additional CSS styles that enhance the Bootstrap theme
+ */
+
+/* General styling */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.footer {
+    margin-top: auto;
+}
+
+/* Score badge styling */
+.badge.badge-score {
+    font-size: 1rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 1rem;
+}
+
+/* Table enhancements */
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.clickable-row:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.comparison-table th,
+.comparison-table td {
+    vertical-align: middle;
+}
+
+.progress {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Compare bar */
+.compare-bar {
+    background-color: rgba(33, 37, 41, 0.95);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out;
+}
+
+.compare-bar.d-none {
+    transform: translateY(100%);
+}
+
+/* Protocol detail page */
+.score-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.score-value {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* Card enhancements */
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-stat {
+    text-align: center;
+    padding: 1.5rem;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--bs-gray-500);
+}
+
+/* Toast notifications */
+.toast-container {
+    z-index: 1100;
+}
+
+/* Score badge colors */
+.badge-eqs {
+    background-color: var(--bs-info);
+    color: var(--bs-dark);
+}
+
+.badge-ugs {
+    background-color: var(--bs-success);
+}
+
+.badge-fvs {
+    background-color: var(--bs-warning);
+    color: var(--bs-dark);
+}
+
+.badge-ss {
+    background-color: var(--bs-danger);
+}
+
+/* Custom animation for loading states */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+.loading-pulse {
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-stat {
+        padding: 1rem;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+}
+
+/* Chart container styling */
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin-bottom: 1.5rem;
+}
+
+/* Protocol card styling */
+.protocol-card {
+    height: 100%;
+}
+
+.protocol-card .card-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.protocol-card .card-footer {
+    margin-top: auto;
+}
+
+/* Score indicator styling */
+.score-indicator {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.score-indicator.high {
+    background-color: var(--bs-success);
+}
+
+.score-indicator.medium {
+    background-color: var(--bs-warning);
+}
+
+.score-indicator.low {
+    background-color: var(--bs-danger);
+}
+
+/* Category pills */
+.category-pill {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.category-pill:hover {
+    transform: translateY(-2px);
+}
+
+.category-pill.active {
+    box-shadow: 0 0 0 2px var(--bs-primary);
+}
+
+/* How3 score gauge styling */
+.how3-gauge {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    margin: 0 auto;
+}
+
+.gauge-circle {
+    fill: none;
+    stroke: var(--bs-gray-700);
+    stroke-width: 10;
+}
+
+.gauge-progress {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease;
+}
+
+.gauge-text {
+    font-size: 2.5rem;
+    font-weight: bold;
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+
+/* Custom scrollbar for the dark theme */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #343a40;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #495057;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #6c757d;
+}

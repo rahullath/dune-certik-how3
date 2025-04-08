@@ -1,0 +1,395 @@
+{% extends 'layout.html' %}
+
+{% block title %}{{ protocol.name }} - How3.io{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ protocol.name }} <small class="text-muted">{{ protocol.symbol }}</small></h1>
+    <div>
+        <span class="badge bg-secondary me-2">{{ protocol.category }}</span>
+        <span class="badge bg-primary p-2">How3 Score: {{ scores.how3_score }}</span>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-8">
+        <div class="card bg-dark border-secondary mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Protocol Overview</h5>
+                <p class="card-text">{{ protocol.description or 'No description available.' }}</p>
+                <div class="row mt-3">
+                    <div class="col-6">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Market Cap:</span>
+                            <span>${{ (protocol.market_cap / 1000000) | round(1) }}M</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Annual Revenue:</span>
+                            <span>${{ (protocol.annual_revenue / 1000000) | round(1) }}M</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">P/S Ratio:</span>
+                            <span>{{ (protocol.market_cap / protocol.annual_revenue) | round(1) }}x</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Last Updated:</span>
+                            <span>{{ scores.calculated_at.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card bg-dark border-primary h-100">
+            <div class="card-body">
+                <h5 class="card-title text-center mb-4">Quality Scores</h5>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="badge bg-info text-dark">EQS</span>
+                        <span>{{ scores.eqs | round(1) }}</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ scores.eqs }}%;" aria-valuenow="{{ scores.eqs }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="badge bg-success">UGS</span>
+                        <span>{{ scores.ugs | round(1) }}</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ scores.ugs }}%;" aria-valuenow="{{ scores.ugs }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="badge bg-warning text-dark">FVS</span>
+                        <span>{{ scores.fvs | round(1) }}</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: {{ scores.fvs }}%;" aria-valuenow="{{ scores.fvs }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="badge bg-danger">SS</span>
+                        <span>{{ scores.ss | round(1) }}</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ scores.ss }}%;" aria-valuenow="{{ scores.ss }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="text-center">
+                    <h4 class="mb-0">How3 Score</h4>
+                    <div class="display-3 mt-2">{{ scores.how3_score }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-6">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Monthly Revenue</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">User Metrics</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="userMetricsChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if similar_protocols %}
+<div class="mb-5">
+    <h3 class="mb-4">Similar Protocols in {{ protocol.category }}</h3>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Protocol</th>
+                    <th>How3 Score</th>
+                    <th>EQS</th>
+                    <th>UGS</th>
+                    <th>FVS</th>
+                    <th>SS</th>
+                    <th>Market Cap</th>
+                    <th>Annual Revenue</th>
+                    <th>P/S Ratio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for similar, score in similar_protocols %}
+                <tr class="clickable-row" data-href="{{ url_for('protocol_detail', protocol_id=similar.id) }}">
+                    <td>
+                        <strong>{{ similar.name }}</strong>
+                        <span class="text-muted ms-2">{{ similar.symbol }}</span>
+                    </td>
+                    <td><span class="badge bg-primary p-2">{{ score.how3_score }}</span></td>
+                    <td>{{ score.eqs | round(1) }}</td>
+                    <td>{{ score.ugs | round(1) }}</td>
+                    <td>{{ score.fvs | round(1) }}</td>
+                    <td>{{ score.ss | round(1) }}</td>
+                    <td>${{ (similar.market_cap / 1000000) | round(1) }}M</td>
+                    <td>${{ (similar.annual_revenue / 1000000) | round(1) }}M</td>
+                    <td>{{ (similar.market_cap / similar.annual_revenue) | round(1) }}x</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between mt-4">
+    <a href="{{ url_for('protocols') }}" class="btn btn-outline-light">Back to All Protocols</a>
+    <button id="add-to-compare-btn" class="btn btn-primary" data-protocol-id="{{ protocol.id }}">Add to Compare</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Revenue chart
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        const revenueChart = new Chart(revenueCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ revenue_chart_data.labels | tojson }},
+                datasets: [
+                    {% for dataset in revenue_chart_data.datasets %}
+                    {
+                        label: '{{ dataset.label }}',
+                        data: {{ dataset.data | tojson }},
+                        backgroundColor: getChartColor({{ loop.index0 }}),
+                        borderColor: getChartColor({{ loop.index0 }}),
+                        borderWidth: 1
+                    }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Monthly Revenue by Source'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': $' + formatNumber(context.raw);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + formatNumber(value);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // User metrics chart
+        const userMetricsCtx = document.getElementById('userMetricsChart').getContext('2d');
+        const userMetricsChart = new Chart(userMetricsCtx, {
+            type: 'line',
+            data: {
+                labels: {{ user_chart_data.labels | tojson }},
+                datasets: [
+                    {
+                        label: 'Active Addresses',
+                        data: {{ user_chart_data.active_addresses | tojson }},
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Transaction Count',
+                        data: {{ user_chart_data.transaction_count | tojson }},
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Monthly User Metrics'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let value = context.raw;
+                                if (context.dataset.label === 'Active Addresses' || context.dataset.label === 'Transaction Count') {
+                                    return context.dataset.label + ': ' + formatNumber(value);
+                                }
+                                return context.dataset.label + ': ' + value;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Active Addresses'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return formatNumber(value);
+                            }
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Transaction Count'
+                        },
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return formatNumber(value);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Compare functionality
+        const addToCompareBtn = document.getElementById('add-to-compare-btn');
+        let selectedProtocols = [];
+        
+        // Check if there are already selected protocols in localStorage
+        const storedProtocols = localStorage.getItem('compareProtocols');
+        if (storedProtocols) {
+            selectedProtocols = JSON.parse(storedProtocols);
+        }
+        
+        // Update button state based on current selection
+        const protocolId = addToCompareBtn.dataset.protocolId;
+        if (selectedProtocols.includes(protocolId)) {
+            addToCompareBtn.textContent = 'Remove from Compare';
+            addToCompareBtn.classList.remove('btn-primary');
+            addToCompareBtn.classList.add('btn-danger');
+        }
+        
+        addToCompareBtn.addEventListener('click', function() {
+            const protocolId = this.dataset.protocolId;
+            
+            if (selectedProtocols.includes(protocolId)) {
+                // Remove from selection
+                selectedProtocols = selectedProtocols.filter(id => id !== protocolId);
+                this.textContent = 'Add to Compare';
+                this.classList.remove('btn-danger');
+                this.classList.add('btn-primary');
+            } else {
+                // Add to selection (max 4)
+                if (selectedProtocols.length < 4) {
+                    selectedProtocols.push(protocolId);
+                    this.textContent = 'Remove from Compare';
+                    this.classList.remove('btn-primary');
+                    this.classList.add('btn-danger');
+                } else {
+                    alert('You can select a maximum of 4 protocols for comparison.');
+                }
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('compareProtocols', JSON.stringify(selectedProtocols));
+        });
+        
+        // Make similar protocols table rows clickable
+        const rows = document.querySelectorAll('.clickable-row');
+        rows.forEach(row => {
+            row.addEventListener('click', function() {
+                window.location = this.dataset.href;
+            });
+        });
+    });
+    
+    // Helper functions
+    function getChartColor(index) {
+        const colors = [
+            'rgba(54, 162, 235, 0.7)',
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(255, 206, 86, 0.7)',
+            'rgba(75, 192, 192, 0.7)',
+            'rgba(153, 102, 255, 0.7)',
+            'rgba(255, 159, 64, 0.7)'
+        ];
+        return colors[index % colors.length];
+    }
+    
+    function formatNumber(num) {
+        if (num >= 1000000000) {
+            return (num / 1000000000).toFixed(1) + 'B';
+        }
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(1) + 'M';
+        }
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'K';
+        }
+        return num.toFixed(0);
+    }
+</script>
+{% endblock %}

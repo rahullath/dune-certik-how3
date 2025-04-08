@@ -1,0 +1,258 @@
+{% extends 'layout.html' %}
+
+{% block title %}Compare Protocols - How3.io{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Compare Protocols</h1>
+
+{% if protocols_data|length < 2 %}
+    <div class="alert alert-warning">
+        <h4 class="alert-heading">Not enough protocols selected</h4>
+        <p>Please select at least 2 protocols to compare. You can select protocols from the <a href="{{ url_for('protocols') }}" class="alert-link">Protocols page</a>.</p>
+    </div>
+    
+    <div class="card bg-dark border-secondary">
+        <div class="card-body">
+            <h5 class="card-title">Add protocols to compare</h5>
+            <form action="{{ url_for('compare_protocols') }}" method="get" id="compare-form">
+                <div class="mb-3">
+                    <label class="form-label">Protocol 1</label>
+                    <select class="form-select" name="ids[]" required>
+                        <option value="">Select a protocol</option>
+                        {% for protocol in all_protocols %}
+                        <option value="{{ protocol.id }}">{{ protocol.name }} ({{ protocol.symbol }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Protocol 2</label>
+                    <select class="form-select" name="ids[]" required>
+                        <option value="">Select a protocol</option>
+                        {% for protocol in all_protocols %}
+                        <option value="{{ protocol.id }}">{{ protocol.name }} ({{ protocol.symbol }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Protocol 3 (optional)</label>
+                    <select class="form-select" name="ids[]">
+                        <option value="">Select a protocol</option>
+                        {% for protocol in all_protocols %}
+                        <option value="{{ protocol.id }}">{{ protocol.name }} ({{ protocol.symbol }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Protocol 4 (optional)</label>
+                    <select class="form-select" name="ids[]">
+                        <option value="">Select a protocol</option>
+                        {% for protocol in all_protocols %}
+                        <option value="{{ protocol.id }}">{{ protocol.name }} ({{ protocol.symbol }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Compare</button>
+            </form>
+        </div>
+    </div>
+{% else %}
+    <div class="mb-4">
+        <button id="reset-compare-btn" class="btn btn-outline-light">Reset Selection</button>
+    </div>
+
+    <div class="table-responsive mb-5">
+        <table class="table table-bordered comparison-table">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    {% for data in protocols_data %}
+                    <th class="text-center">
+                        <a href="{{ url_for('protocol_detail', protocol_id=data.protocol.id) }}" class="text-decoration-none">
+                            {{ data.protocol.name }}
+                            <span class="d-block text-muted">{{ data.protocol.symbol }}</span>
+                        </a>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Category</strong></td>
+                    {% for data in protocols_data %}
+                    <td class="text-center"><span class="badge bg-secondary">{{ data.protocol.category }}</span></td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>How3 Score</strong></td>
+                    {% for data in protocols_data %}
+                    <td class="text-center">
+                        <span class="badge bg-primary p-2 rounded-pill">{{ data.score.how3_score }}</span>
+                    </td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>Earnings Quality Score (EQS)</strong></td>
+                    {% for data in protocols_data %}
+                    <td class="text-center">
+                        <div class="progress mb-2" style="height: 12px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ data.score.eqs }}%;" 
+                                 aria-valuenow="{{ data.score.eqs }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span>{{ data.score.eqs | round(1) }}</span>
+                    </td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>User Growth Score (UGS)</strong></td>
+                    {% for data in protocols_data %}
+                    <td class="text-center">
+                        <div class="progress mb-2" style="height: 12px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ data.score.ugs }}%;" 
+                                 aria-valuenow="{{ data.score.ugs }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span>{{ data.score.ugs | round(1) }}</span>
+                    </td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>Fair Value Score (FVS)</strong></td>
+                    {% for data in protocols_data %}
+                    <td class="text-center">
+                        <div class="progress mb-2" style="height: 12px;">
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: {{ data.score.fvs }}%;" 
+                                 aria-valuenow="{{ data.score.fvs }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span>{{ data.score.fvs | round(1) }}</span>
+                    </td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>Safety Score (SS)</strong></td>
+                    {% for data in protocols_data %}
+                    <td class="text-center">
+                        <div class="progress mb-2" style="height: 12px;">
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ data.score.ss }}%;" 
+                                 aria-valuenow="{{ data.score.ss }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <span>{{ data.score.ss | round(1) }}</span>
+                    </td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>Market Cap</strong></td>
+                    {% for data in protocols_data %}
+                    <td class="text-center">${{ (data.protocol.market_cap / 1000000) | round(1) }}M</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>Annual Revenue</strong></td>
+                    {% for data in protocols_data %}
+                    <td class="text-center">${{ (data.protocol.annual_revenue / 1000000) | round(1) }}M</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>P/S Ratio</strong></td>
+                    {% for data in protocols_data %}
+                    <td class="text-center">{{ (data.protocol.market_cap / data.protocol.annual_revenue) | round(1) }}x</td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card bg-dark border-secondary mb-5">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Score Comparison</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="comparisonRadarChart" height="400"></canvas>
+        </div>
+    </div>
+{% endif %}
+
+<div class="text-center mt-5">
+    <a href="{{ url_for('protocols') }}" class="btn btn-outline-light">Back to All Protocols</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if protocols_data|length >= 2 %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Radar chart for score comparison
+        const radarCtx = document.getElementById('comparisonRadarChart').getContext('2d');
+        const radarChart = new Chart(radarCtx, {
+            type: 'radar',
+            data: {
+                labels: ['EQS', 'UGS', 'FVS', 'SS'],
+                datasets: [
+                    {% for data in protocols_data %}
+                    {
+                        label: '{{ data.protocol.name }}',
+                        data: [
+                            {{ data.score.eqs }},
+                            {{ data.score.ugs }},
+                            {{ data.score.fvs }},
+                            {{ data.score.ss }}
+                        ],
+                        backgroundColor: getChartColor({{ loop.index0 }}, 0.2),
+                        borderColor: getChartColor({{ loop.index0 }}, 1),
+                        pointBackgroundColor: getChartColor({{ loop.index0 }}, 1),
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: getChartColor({{ loop.index0 }}, 1)
+                    }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Score Comparison'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.raw.toFixed(1);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    r: {
+                        angleLines: {
+                            display: true
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 100
+                    }
+                }
+            }
+        });
+        
+        // Reset comparison button
+        document.getElementById('reset-compare-btn').addEventListener('click', function() {
+            localStorage.removeItem('compareProtocols');
+            window.location.href = '{{ url_for("protocols") }}';
+        });
+    });
+    
+    // Helper function for chart colors
+    function getChartColor(index, alpha) {
+        const colors = [
+            `rgba(54, 162, 235, ${alpha})`,
+            `rgba(255, 99, 132, ${alpha})`,
+            `rgba(255, 206, 86, ${alpha})`,
+            `rgba(75, 192, 192, ${alpha})`
+        ];
+        return colors[index % colors.length];
+    }
+</script>
+{% endif %}
+{% endblock %}
