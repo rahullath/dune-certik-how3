@@ -397,47 +397,94 @@ class DuneProcessor:
             EQS score (0-100)
         """
         try:
+            # Import the improved EQS calculator
+            from improved_eqs_calculator import EnhancedEQSCalculator, integrate_with_dune_processor
+            
             # Check if we have necessary data
             if df.empty or 'mom_change' not in df.columns:
                 logger.warning("Insufficient data for EQS calculation")
                 return None
+                
+            # Use our enhanced calculator through the integration function
+            # Try to get protocol name from registered protocols or use a default
+            current_protocol = next(iter(self.protocols.keys()), 'current_protocol') if hasattr(self, 'protocols') else 'current_protocol'
+            data = {'eqs': df}
+            eqs_score = integrate_with_dune_processor(self, current_protocol, data)
             
-            # Calculate stability score (inverse of volatility)
+            if eqs_score is not None:
+                logger.info(f"Using improved EQS calculator: score = {eqs_score:.2f}")
+                return eqs_score
+                
+            # If integration function failed, fall back to direct calculator
+            logger.warning("Integration function failed, trying direct calculator")
+            calculator = EnhancedEQSCalculator()
+            eqs_score = calculator.calculate_eqs(df, current_protocol)
+            
+            if eqs_score is not None:
+                logger.info(f"Using direct EQS calculator: score = {eqs_score:.2f}")
+                return eqs_score
+                
+            # Fall back to basic calculation if enhanced calculator fails
+            logger.warning("Enhanced EQS calculator failed, using fallback method")
+            
+            # Calculate stability score based on revenue trend volatility
             stability_score = 0
             if 'mom_change' in df.columns:
-                # Filter out NaN values
-                mom_changes = df['mom_change'].dropna()
+                # Filter out NaN values and take absolute values
+                mom_changes = df['mom_change'].dropna().abs()
                 
                 if not mom_changes.empty:
-                    # Calculate coefficient of variation (standard deviation / mean)
-                    # We use absolute mean to avoid division by zero issues
-                    cv = mom_changes.std() / max(abs(mom_changes.mean()), 0.001)
+                    # Calculate average volatility
+                    avg_trend = mom_changes.mean()
                     
-                    # Normalize to 0-100 scale (lower CV is better)
-                    # We cap at 2.0 to avoid extreme scores
-                    normalized_cv = min(cv, 2.0) / 2.0
-                    stability_score = 100 * (1 - normalized_cv)
+                    # Using the formula: stability_score = max(0, 100 - (avg_trend * 100))
+                    stability_score = max(0, 100 - (avg_trend * 100))
             
-            # Calculate magnitude score (based on total revenue)
+            # Calculate magnitude score
             magnitude_score = 0
             if 'total_fees' in df.columns:
-                # Get most recent 12 months if available
-                recent_df = df.sort_values('month', ascending=False).head(12)
-                annual_revenue = recent_df['total_fees'].sum()
+                # Get most recent month
+                recent_month = df['month'].max()
+                recent_data = df[df['month'] == recent_month]
+                total_revenue = recent_data['total_fees'].sum()
                 
-                # Log scale to handle large differences between protocols
-                # Score from 0-100 based on logarithmic scale
-                # $1M annual revenue -> ~50 points
-                # $10M annual revenue -> ~75 points
-                # $100M annual revenue -> ~100 points
-                if annual_revenue > 0:
-                    magnitude_score = min(100, max(0, 25 * (np.log10(annual_revenue) + 1)))
+                # Use a reference value for "large revenue"
+                reference_revenue = 5000000  # $5M monthly revenue as reference
+                
+                # Log scale for better distribution
+                if total_revenue > 0:
+                    magnitude_score = min(100, 100 * np.log(total_revenue + 1) / np.log(reference_revenue + 1))
             
-            # Combine scores using weights from config
-            stability_weight = EQS_WEIGHTS.get('stability', 0.5)
-            magnitude_weight = EQS_WEIGHTS.get('magnitude', 0.5)
+            # Calculate diversification score if possible
+            diversification_score = None
+            sources = df['source'].unique() if 'source' in df.columns else []
             
-            eqs_score = (stability_score * stability_weight) + (magnitude_score * magnitude_weight)
+            if len(sources) > 1:
+                # Get recent month's data
+                recent_month = df['month'].max()
+                recent_data = df[df['month'] == recent_month]
+                
+                # Get revenue by source
+                revenue_by_source = recent_data.groupby('source')['total_fees'].sum()
+                
+                # Calculate standard deviation and mean for diversification
+                diversification_std = revenue_by_source.std()
+                diversification_mean = revenue_by_source.mean()
+                
+                if diversification_mean > 0:
+                    # Higher coefficient of variation indicates more diversification
+                    cv = diversification_std / diversification_mean
+                    diversification_score = min(100, 50 * cv)
+            
+            # Combine scores using weights
+            if diversification_score is not None:
+                # When both stability and diversification exist: 0.7 * stability_score + 0.3 * diversification_score
+                quality_score = 0.7 * stability_score + 0.3 * diversification_score
+            else:
+                quality_score = stability_score
+            
+            # Apply magnitude adjustment - (stability_score * magnitude_score) / 100
+            eqs_score = (quality_score * magnitude_score) / 100
             
             return round(eqs_score, 2)
             
