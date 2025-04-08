@@ -1,0 +1,111 @@
+/*
+Table(s): chainlink.vrf_reward_daily, chainlink.automation_reward_daily, chainlink.fm_reward_daily, chainlink.ocr_reward_daily, chainlink.ccip_reward_daily
+Reason: Curated dataset recommendations
+
+Table(s): chainlink_celo.accesscontrolledoffchainaggregator_evt_oraclepaid,  chainlink_multichain.accesscontrolledoffchainaggregator_evt_oraclepaid,  chainlink_ethereum.accesscontrolledoffchainaggregator_evt_oraclepaid,  chainlink_ethereum.btc_usd_contract_evt_oraclepaid,  chainlink_ethereum.accesscontrolledocr2aggregator_evt_oraclepaid,  chainlink_ethereum.dai_usd_contract_ocr_evt_oraclepaid,  chainlink_polygon.accesscontrolledoffchainaggregator_evt_oraclepaid,  chainlink_polygon.accesscontrolledocr2aggregator_evt_oraclepaid,  chainlink_base.accesscontrolledoffchainaggregator_evt_oraclepaid,  chainlink_multichain.accesscontrolledocr2aggregator_evt_oraclepaid,  chainlink_arbitrum.accesscontrolledoffchainaggregator_evt_oraclepaid,  chainlink_optimism.accesscontrolledoffchainaggregator_evt_oraclepaid,  chainlink_ethereum.aggregator_evt_oraclepaid,  chainlink_steth_eth_price_feed_ethereum.accesscontrolledoffchainaggregator_evt_oraclepaid,  chainlink_base.accesscontrolledoffchainaggregator_eth_usd_evt_oraclepaid,  chainlink_gnosis.accesscontrolledoffchainaggregator_evt_oraclepaid
+Reason: Based on contract addresses or possible project names
+
+*/
+
+WITH MonthlyFees AS (
+  SELECT
+    DATE_TRUNC('month', date_start) AS month,
+    SUM(usd_amount) AS total_fees,
+    'vrf' AS source
+  FROM chainlink.vrf_reward_daily
+  WHERE
+    date_start >= CURRENT_DATE - INTERVAL '1' year
+  GROUP BY
+    1
+  UNION ALL
+  SELECT
+    DATE_TRUNC('month', date_start) AS month,
+    SUM(usd_amount) AS total_fees,
+    'automation' AS source
+  FROM chainlink.automation_reward_daily
+  WHERE
+    date_start >= CURRENT_DATE - INTERVAL '1' year
+  GROUP BY
+    1
+  UNION ALL
+  SELECT
+    DATE_TRUNC('month', date_start) AS month,
+    SUM(usd_amount) AS total_fees,
+    'fm' AS source
+  FROM chainlink.fm_reward_daily
+  WHERE
+    date_start >= CURRENT_DATE - INTERVAL '1' year
+  GROUP BY
+    1
+  UNION ALL
+  SELECT
+    DATE_TRUNC('month', date_start) AS month,
+    SUM(usd_amount) AS total_fees,
+    'ocr' AS source
+  FROM chainlink.ocr_reward_daily
+  WHERE
+    date_start >= CURRENT_DATE - INTERVAL '1' year
+  GROUP BY
+    1
+  UNION ALL
+  SELECT
+    DATE_TRUNC('month', date_start) AS month,
+    SUM(usd_amount) AS total_fees,
+    'ccip' AS source
+  FROM chainlink.ccip_reward_daily
+  WHERE
+    date_start >= CURRENT_DATE - INTERVAL '1' year
+  GROUP BY
+    1
+), RevenueStability AS (
+  SELECT
+    month,
+    total_fees,
+    source,
+    LAG(total_fees) OVER (PARTITION BY source ORDER BY month) AS previous_month_fees,
+    (
+      total_fees - LAG(total_fees) OVER (PARTITION BY source ORDER BY month)
+    ) / NULLIF(LAG(total_fees) OVER (PARTITION BY source ORDER BY month), 0) AS mom_change
+  FROM MonthlyFees
+), StabilityMagnitudeScores AS (
+  SELECT
+    source,
+    AVG(mom_change) AS avg_mom_change,
+    STDDEV(mom_change) AS stddev_mom_change,
+    COUNT(*) AS num_months
+  FROM RevenueStability
+  GROUP BY
+    source
+)
+SELECT
+  month,
+  source,
+  total_fees,
+  mom_change,
+  avg_mom_change,
+  stddev_mom_change,
+  num_months
+FROM RevenueStability
+JOIN StabilityMagnitudeScores
+  USING (source)
+ORDER BY
+  month,
+  source
+
+OUTPUT from dune for the above sql - sample.
+
+| month | source | total_fees | mom_change | avg_mom_change | stddev_mom_change | num_months |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2024-04-01 | automation | 67939.46084758072 |  | -0.08008760931758903 | 0.5116151413977408 | 13 |
+| 2024-04-01 | ccip | 98848.54011158487 |  | 0.009141157048100923 | 0.6596989982341107 | 13 |
+| 2024-04-01 | fm | 2219711.501320376 |  | -0.20989551767904832 | 0.4108114361781297 | 13 |
+| 2024-04-01 | ocr | 3395286.256855447 |  | -0.22781204525964827 | 0.421958290453829 | 13 |
+| 2024-04-01 | vrf | 31244.752470117477 |  | -0.2036716821229518 | 0.3310369401263438 | 13 |
+| 2024-05-01 | automation | 65326.42687327729 | -0.03846121152132275 | -0.08008760931758903 | 0.5116151413977408 | 13 |
+| 2024-05-01 | ccip | 75257.5047921389 | -0.23865840904494182 | 0.009141157048100923 | 0.6596989982341107 | 13 |
+| 2024-05-01 | fm | 2199732.3881992646 | -0.009000770194336972 | -0.20989551767904832 | 0.4108114361781297 | 13 |
+| 2024-05-01 | ocr | 3152587.491741491 | -0.0714810907692749 | -0.22781204525964827 | 0.421958290453829 | 13 |
+| 2024-05-01 | vrf | 20580.17782983342 | -0.3413237038918349 | -0.2036716821229518 | 0.3310369401263438 | 13 |
+
+The data matches tokenterminal's fees/revenue data - but they only consider the ccip source.
+

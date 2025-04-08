@@ -1,0 +1,168 @@
+/*
+Table(s): chainlink.ocr_request_daily, chainlink.fm_request_daily, chainlink.ccip_send_requested_daily, chainlink.automation_performed_daily, chainlink.vrf_request_daily
+Reason: Curated dataset recommendations
+
+Table(s): chainlink_avalanche_c.bridgetoken_evt_transfer, chainlink_fantom.chainlink_evt_transfer, chainlink_ethereum.linktoken_evt_transfer, chainlink_ethereum.link_evt_transfer, chainlink_ronin.linktoken_evt_transfer, chainlink_optimism.linktokenoptimism_evt_transfer, chainlink_optimism_legacy_ovm1.linktokenoptimism_evt_transfer, chainlink_multichain.linktoken_evt_transfer, chainlink_polygon.linktoken_evt_transfer
+Reason: Based on contract addresses or possible project names
+
+*/
+
+WITH monthly_active_addresses AS (
+  SELECT
+    DATE_TRUNC('month', evt_block_time) AS month,
+    COUNT(DISTINCT evt_tx_from) AS active_addresses
+  FROM (
+    SELECT
+      evt_tx_from,
+      evt_block_time
+    FROM chainlink_ethereum.linktoken_evt_transfer
+    UNION ALL
+    SELECT
+      evt_tx_from,
+      evt_block_time
+    FROM chainlink_avalanche_c.bridgetoken_evt_transfer
+    UNION ALL
+    SELECT
+      evt_tx_from,
+      evt_block_time
+    FROM chainlink_fantom.chainlink_evt_transfer
+    UNION ALL
+    SELECT
+      evt_tx_from,
+      evt_block_time
+    FROM chainlink_ronin.linktoken_evt_transfer
+    UNION ALL
+    SELECT
+      evt_tx_from,
+      evt_block_time
+    FROM chainlink_optimism.linktokenoptimism_evt_transfer
+    UNION ALL
+    SELECT
+      evt_tx_from,
+      evt_block_time
+    FROM chainlink_multichain.linktoken_evt_transfer
+    UNION ALL
+    SELECT
+      evt_tx_from,
+      evt_block_time
+    FROM chainlink_polygon.linktoken_evt_transfer
+  ) AS transfers
+  WHERE
+    evt_block_time >= CURRENT_DATE - INTERVAL '1' YEAR
+  GROUP BY
+    1
+), transaction_count_volume AS (
+  SELECT
+    DATE_TRUNC('month', evt_block_time) AS month,
+    COUNT(*) AS transaction_count,
+    SUM(value) AS transaction_volume
+  FROM (
+    SELECT
+      evt_block_time,
+      value
+    FROM chainlink_ethereum.linktoken_evt_transfer
+    UNION ALL
+    SELECT
+      evt_block_time,
+      value
+    FROM chainlink_avalanche_c.bridgetoken_evt_transfer
+    UNION ALL
+    SELECT
+      evt_block_time,
+      value
+    FROM chainlink_fantom.chainlink_evt_transfer
+    UNION ALL
+    SELECT
+      evt_block_time,
+      value
+    FROM chainlink_ronin.linktoken_evt_transfer
+    UNION ALL
+    SELECT
+      evt_block_time,
+      value
+    FROM chainlink_optimism.linktokenoptimism_evt_transfer
+    UNION ALL
+    SELECT
+      evt_block_time,
+      value
+    FROM chainlink_multichain.linktoken_evt_transfer
+    UNION ALL
+    SELECT
+      evt_block_time,
+      value
+    FROM chainlink_polygon.linktoken_evt_transfer
+  ) AS transfers
+  WHERE
+    evt_block_time >= CURRENT_DATE - INTERVAL '1' YEAR
+  GROUP BY
+    1
+), growth_rates AS (
+  SELECT
+    m1.month,
+    m1.active_addresses,
+    m2.active_addresses AS previous_active_addresses,
+    (
+      m1.active_addresses - m2.active_addresses
+    ) / NULLIF(m2.active_addresses, 0) * 100 AS active_address_growth_rate,
+    t1.transaction_count,
+    t2.transaction_count AS previous_transaction_count,
+    (
+      t1.transaction_count - t2.transaction_count
+    ) / NULLIF(t2.transaction_count, 0) * 100 AS transaction_count_growth_rate,
+    t1.transaction_volume,
+    t2.transaction_volume AS previous_transaction_volume,
+    (
+      t1.transaction_volume - t2.transaction_volume
+    ) / NULLIF(t2.transaction_volume, 0) * 100 AS transaction_volume_growth_rate
+  FROM monthly_active_addresses AS m1
+  LEFT JOIN monthly_active_addresses AS m2
+    ON m1.month = m2.month + INTERVAL '1' MONTH
+  LEFT JOIN transaction_count_volume AS t1
+    ON m1.month = t1.month
+  LEFT JOIN transaction_count_volume AS t2
+    ON t1.month = t2.month + INTERVAL '1' MONTH
+), percentile_ranking AS (
+  SELECT
+    month,
+    active_addresses,
+    transaction_count,
+    transaction_volume,
+    PERCENT_RANK() OVER (ORDER BY active_addresses) AS active_address_percentile,
+    PERCENT_RANK() OVER (ORDER BY transaction_count) AS transaction_count_percentile,
+    PERCENT_RANK() OVER (ORDER BY transaction_volume) AS transaction_volume_percentile
+  FROM growth_rates
+)
+SELECT
+  *
+FROM percentile_ranking
+ORDER BY
+  month DESC
+
+
+OUTPUT - SQL from dune for above code - sample markdown for few rows
+
+| month | active_addresses | transaction_count | transaction_volume | active_address_percentile | transaction_count_percentile | transaction_volume_percentile |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2025-04-01 00:00:00.000 UTC | 6070 | 206283 | 4995404279668602137206186 | 0 | 0 | 0 |
+| 2025-03-01 00:00:00.000 UTC | 20014 | 1177436 | 23127716660649181474422613 | 0.08333333333333333 | 0.5 | 0.08333333333333333 |
+| 2025-02-01 00:00:00.000 UTC | 22685 | 1198301 | 26607668291166678090534779 | 0.3333333333333333 | 0.5833333333333334 | 0.3333333333333333 |
+| 2025-01-01 00:00:00.000 UTC | 27324 | 1312775 | 30899172776060313905941646 | 0.5 | 0.75 | 0.5 |
+| 2024-12-01 00:00:00.000 UTC | 30545 | 1904726 | 50776289163479311801455544 | 0.6666666666666666 | 0.8333333333333334 | 1 |
+| 2024-11-01 00:00:00.000 UTC | 24726 | 1232742 | 44451485109276730858948084 | 0.4166666666666667 | 0.6666666666666666 | 0.8333333333333334 |
+| 2024-10-01 00:00:00.000 UTC | 22316 | 697837 | 23595126071194626425256544 | 0.25 | 0.16666666666666666 | 0.16666666666666666 |
+| 2024-09-01 00:00:00.000 UTC | 31801 | 976361 | 30129429463769290357133489 | 0.75 | 0.3333333333333333 | 0.4166666666666667 |
+| 2024-08-01 00:00:00.000 UTC | 40876 | 1931965 | 45281565953156527754029142 | 0.9166666666666666 | 0.9166666666666666 | 0.9166666666666666 |
+| 2024-07-01 00:00:00.000 UTC | 45458 | 2208548 | 36902210767562857982800398 | 1 | 1 | 0.75 |
+
+This is not matching I guess - not sure -
+
+tokenterminal shows this - check and let me know
+
+Active addresses monthly 
+Jan 2025 (full month) not 01-01 like ours (that means December I guess) - 72k
+Feb 2025 - 68k
+March 2025 - 50k 
+
+Transaction Count
+126 million for February
+(all values are 100 million+ for monthly)
