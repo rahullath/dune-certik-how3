@@ -1,0 +1,249 @@
+{% extends 'layout.html' %}
+
+{% block title %}{{ protocol.name }} - How3.io Analysis{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item"><a href="/protocols">Protocols</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ protocol.name }}</li>
+            </ol>
+        </nav>
+        <h1 class="mb-3">{{ protocol.name }} <span class="badge bg-secondary">{{ protocol.symbol }}</span></h1>
+        <div class="mb-4">
+            <span class="badge bg-primary me-2">{{ protocol.category }}</span>
+            <span class="text-muted">Last updated: {{ score.timestamp.strftime('%Y-%m-%d') }}</span>
+        </div>
+        <p class="lead">{{ protocol.description }}</p>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">How3 Score</h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="display-1 mb-3 
+                    {% if score.how3_score >= 80 %}text-success
+                    {% elif score.how3_score >= 70 %}text-info
+                    {% elif score.how3_score >= 50 %}text-warning
+                    {% else %}text-danger{% endif %}">
+                    {{ "%.1f"|format(score.how3_score) }}
+                </div>
+                <div class="progress mb-3" style="height: 2rem;">
+                    <div class="progress-bar bg-primary" style="width: {{ score.earnings_quality_score }}%;" title="Earnings Quality">
+                        EQS
+                    </div>
+                    <div class="progress-bar bg-success" style="width: {{ score.user_growth_score }}%;" title="User Growth">
+                        UGS
+                    </div>
+                    <div class="progress-bar bg-info" style="width: {{ score.fair_value_score }}%;" title="Fair Value">
+                        FVS
+                    </div>
+                    <div class="progress-bar bg-warning" style="width: {{ score.safety_score }}%;" title="Safety">
+                        SS
+                    </div>
+                </div>
+                <div class="row text-center g-2">
+                    <div class="col-6">
+                        <div class="card">
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-0">EQS</h6>
+                                <p class="h4 mb-0">{{ "%.1f"|format(score.earnings_quality_score) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card">
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-0">UGS</h6>
+                                <p class="h4 mb-0">{{ "%.1f"|format(score.user_growth_score) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card">
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-0">FVS</h6>
+                                <p class="h4 mb-0">{{ "%.1f"|format(score.fair_value_score) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card">
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-0">SS</h6>
+                                <p class="h4 mb-0">{{ "%.1f"|format(score.safety_score) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Key Metrics</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <th>Market Cap</th>
+                            <td>${{ "{:,.0f}".format(protocol.market_cap) }}</td>
+                        </tr>
+                        <tr>
+                            <th>Annual Revenue</th>
+                            <td>${{ "{:,.0f}".format(protocol.annual_revenue) }}</td>
+                        </tr>
+                        <tr>
+                            <th>Token Price</th>
+                            <td>${{ "%.2f"|format(protocol.price) }}</td>
+                        </tr>
+                        <tr>
+                            <th>Price to Revenue Ratio</th>
+                            <td>{{ "%.2f"|format(protocol.market_cap / protocol.annual_revenue) }}x</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Performance Summary</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">Earnings Quality</h6>
+                            <p class="text-muted mb-0 small">Revenue stability and magnitude relative to peers</p>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">{{ "%.1f"|format(score.earnings_quality_score) }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">User Growth</h6>
+                            <p class="text-muted mb-0 small">Active users, transactions and volume</p>
+                        </div>
+                        <span class="badge bg-success rounded-pill">{{ "%.1f"|format(score.user_growth_score) }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">Fair Value</h6>
+                            <p class="text-muted mb-0 small">Market cap to revenue comparison</p>
+                        </div>
+                        <span class="badge bg-info rounded-pill">{{ "%.1f"|format(score.fair_value_score) }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">Safety</h6>
+                            <p class="text-muted mb-0 small">Security audits and vulnerability assessment</p>
+                        </div>
+                        <span class="badge bg-warning rounded-pill">{{ "%.1f"|format(score.safety_score) }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Revenue History</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">User Metrics</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="userMetricsChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <h3 class="mb-4">Category Peers</h3>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Protocol</th>
+                        <th>How3 Score</th>
+                        <th>EQS</th>
+                        <th>UGS</th>
+                        <th>FVS</th>
+                        <th>SS</th>
+                        <th>Market Cap</th>
+                        <th>Annual Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for peer, peer_score in category_peers %}
+                    <tr class="clickable-row" data-href="/protocol/{{ peer.id }}">
+                        <td>
+                            <strong>{{ peer.name }}</strong>
+                            <span class="badge bg-secondary">{{ peer.symbol }}</span>
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill 
+                                {% if peer_score.how3_score >= 80 %}score-excellent
+                                {% elif peer_score.how3_score >= 70 %}score-good
+                                {% elif peer_score.how3_score >= 50 %}score-moderate
+                                {% else %}score-poor{% endif %}">
+                                {{ "%.1f"|format(peer_score.how3_score) }}
+                            </span>
+                        </td>
+                        <td>{{ "%.1f"|format(peer_score.earnings_quality_score) }}</td>
+                        <td>{{ "%.1f"|format(peer_score.user_growth_score) }}</td>
+                        <td>{{ "%.1f"|format(peer_score.fair_value_score) }}</td>
+                        <td>{{ "%.1f"|format(peer_score.safety_score) }}</td>
+                        <td>${{ "{:,.0f}".format(peer.market_cap) }}</td>
+                        <td>${{ "{:,.0f}".format(peer.annual_revenue) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+    // Load chart data from API endpoints
+    fetch('/api/protocol/{{ protocol.id }}/revenue-history')
+        .then(response => response.json())
+        .then(data => {
+            createRevenueChart('revenueChart', data);
+        });
+        
+    fetch('/api/protocol/{{ protocol.id }}/user-history')
+        .then(response => response.json())
+        .then(data => {
+            createUserMetricsChart('userMetricsChart', data);
+        });
+</script>
+{% endblock %}

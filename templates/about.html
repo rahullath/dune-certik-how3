@@ -1,0 +1,192 @@
+{% extends 'layout.html' %}
+
+{% block title %}About How3.io{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">About How3.io</h1>
+
+<div class="row mb-5">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h3 class="card-title">Our Mission</h3>
+                <p class="lead">Simplifying crypto investment decisions for traditional finance investors</p>
+                <p>How3.io brings traditional finance metrics to crypto protocols, helping investors understand their fundamental value without needing deep blockchain expertise. We create standardized scores across multiple dimensions to give a complete picture of a protocol's health and future potential.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h3 class="card-title">Our Approach</h3>
+                <p>How3.io analyzes over 50 leading protocols using data from:</p>
+                <ul>
+                    <li>On-chain transactional data</li>
+                    <li>Protocol revenue figures</li>
+                    <li>User growth metrics</li>
+                    <li>Security assessments</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="mb-4">Our Scoring Methodology</h2>
+
+<div class="row row-cols-1 row-cols-md-2 g-4 mb-5">
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Earnings Quality Score (EQS)</h4>
+            </div>
+            <div class="card-body">
+                <p>The Earnings Quality Score measures both the stability and magnitude of a protocol's revenue streams.</p>
+                
+                <h5>Components:</h5>
+                <ul>
+                    <li><strong>Revenue Stability (50%)</strong>: Evaluates month-over-month consistency in revenue generation</li>
+                    <li><strong>Revenue Magnitude (50%)</strong>: Assesses revenue size relative to category peers</li>
+                </ul>
+                
+                <h5>Why it matters</h5>
+                <p>Protocols with consistent and substantial revenue streams demonstrate product-market fit and sustainable business models, making them more attractive long-term investments.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">User Growth Score (UGS)</h4>
+            </div>
+            <div class="card-body">
+                <p>The User Growth Score evaluates adoption trends and user engagement metrics.</p>
+                
+                <h5>Components:</h5>
+                <ul>
+                    <li><strong>Active Addresses (40%)</strong>: Number of unique addresses interacting with the protocol</li>
+                    <li><strong>Transaction Count (30%)</strong>: Volume of transactions processed</li>
+                    <li><strong>Transaction Volume (30%)</strong>: Total value of transactions</li>
+                </ul>
+                
+                <h5>Why it matters</h5>
+                <p>Strong user growth indicates increasing adoption and network effects, which typically translate to long-term value creation and potential revenue growth.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">Fair Value Score (FVS)</h4>
+            </div>
+            <div class="card-body">
+                <p>The Fair Value Score compares a protocol's market capitalization to its revenue generation.</p>
+                
+                <h5>Components:</h5>
+                <ul>
+                    <li><strong>Price to Revenue Ratio</strong>: Compares current market cap to annual revenue</li>
+                    <li><strong>Category Comparison</strong>: Evaluates P/R ratio against category averages</li>
+                </ul>
+                
+                <h5>Why it matters</h5>
+                <p>This score helps identify potentially undervalued or overvalued protocols by comparing their valuations relative to their revenue generation capacity and industry peers.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="mb-0">Safety Score (SS)</h4>
+            </div>
+            <div class="card-body">
+                <p>The Safety Score evaluates technical security and vulnerability risks.</p>
+                
+                <h5>Components:</h5>
+                <ul>
+                    <li><strong>Code Quality</strong>: Assessment of code quality and best practices</li>
+                    <li><strong>Vulnerability History</strong>: Historical security incidents and responses</li>
+                    <li><strong>Audit Strength</strong>: Coverage and depth of security audits</li>
+                </ul>
+                
+                <h5>Why it matters</h5>
+                <p>Security is paramount in crypto investments. Protocols with strong security practices reduce the risk of hacks, exploits, and technical failures that could lead to significant losses.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h4 class="mb-0">How3 Score Calculation</h4>
+            </div>
+            <div class="card-body">
+                <p>The overall How3 Score is a weighted average of the four component scores:</p>
+                
+                <div class="alert alert-secondary">
+                    <strong>How3 Score</strong> = (EQS × 25%) + (UGS × 25%) + (FVS × 25%) + (SS × 25%)
+                </div>
+                
+                <p>Each component is normalized to a 0-100 scale before being combined. The final How3 Score provides a comprehensive evaluation of a protocol's overall quality and investment potential.</p>
+                
+                <h5 class="mt-4">Score Interpretation</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Score Range</th>
+                                    <th>Rating</th>
+                                    <th>Interpretation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>80-100</td>
+                                    <td><span class="badge bg-success">Excellent</span></td>
+                                    <td>Top-tier protocol with strong fundamentals</td>
+                                </tr>
+                                <tr>
+                                    <td>70-79</td>
+                                    <td><span class="badge bg-info">Good</span></td>
+                                    <td>Solid protocol with strong potential</td>
+                                </tr>
+                                <tr>
+                                    <td>50-69</td>
+                                    <td><span class="badge bg-warning">Moderate</span></td>
+                                    <td>Average protocol with some concerns</td>
+                                </tr>
+                                <tr>
+                                    <td>0-49</td>
+                                    <td><span class="badge bg-danger">Poor</span></td>
+                                    <td>Weak fundamentals, higher risk</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h3>Data Sources</h3>
+                <p>How3.io leverages data from the following sources:</p>
+                <ul>
+                    <li><strong>Dune Analytics</strong>: On-chain data for revenue and user metrics</li>
+                    <li><strong>Certik Skynet</strong>: Security audit information and vulnerability assessments</li>
+                    <li><strong>CoinGecko/CoinMarketCap</strong>: Market capitalization and token price data</li>
+                </ul>
+                <p>Data is updated daily to ensure scores reflect the most current information available.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

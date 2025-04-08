@@ -1,251 +1,195 @@
 /**
- * Custom styles for How3.io
- * Additional CSS styles that enhance the Bootstrap theme
+ * Custom CSS for How3.io
+ * Contains minimal custom styling to extend Bootstrap
  */
 
-/* General styling */
-body {
-    min-height: 100vh;
+/* Protocol icon styling */
+.protocol-icon {
+    width: 40px;
+    height: 40px;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: var(--bs-light);
+    background-color: var(--bs-dark);
+    border-radius: 50%;
 }
 
-.footer {
-    margin-top: auto;
+/* Card hover effect */
+.card.hover-effect {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Score badge styling */
-.badge.badge-score {
-    font-size: 1rem;
-    padding: 0.5rem 0.7rem;
-    border-radius: 1rem;
+.card.hover-effect:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Table enhancements */
-.clickable-row {
+/* Sortable table headers */
+th.sortable-header {
     cursor: pointer;
-    transition: background-color 0.2s;
+    position: relative;
 }
 
-.clickable-row:hover {
+th.sortable-header:hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
 
-.comparison-table th,
-.comparison-table td {
-    vertical-align: middle;
+th.sort-asc .sort-indicator,
+th.sort-desc .sort-indicator {
+    opacity: 1 !important;
 }
 
-.progress {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Compare bar */
-.compare-bar {
-    background-color: rgba(33, 37, 41, 0.95);
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease-in-out;
-}
-
-.compare-bar.d-none {
-    transform: translateY(100%);
-}
-
-/* Protocol detail page */
-.score-item {
-    display: flex;
-    justify-content: space-between;
+/* Score badges */
+.score-badge {
+    display: inline-flex;
     align-items: center;
-    margin-bottom: 1rem;
-}
-
-.score-value {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
     font-weight: bold;
-    font-size: 1.1rem;
 }
 
-/* Card enhancements */
-.card {
-    transition: transform 0.2s, box-shadow 0.2s;
+.score-badge.score-high {
+    background-color: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
 }
 
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+.score-badge.score-medium {
+    background-color: rgba(241, 196, 15, 0.2);
+    color: #f1c40f;
 }
 
-.card-stat {
+.score-badge.score-low {
+    background-color: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+}
+
+/* Tooltip enhancements */
+.score-tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+}
+
+.score-tooltip:hover .tooltip-content {
+    visibility: visible;
+    opacity: 1;
+}
+
+.score-tooltip .tooltip-content {
+    visibility: hidden;
+    opacity: 0;
+    width: 200px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
     text-align: center;
-    padding: 1.5rem;
+    border-radius: 6px;
+    padding: 10px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    transition: opacity 0.3s;
 }
 
-.stat-value {
-    font-size: 1.8rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
+/* Category badges */
+.category-badge {
+    background-color: var(--bs-dark);
+    color: var(--bs-light);
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    display: inline-block;
 }
 
-.stat-label {
-    font-size: 0.9rem;
-    color: var(--bs-gray-500);
+/* Format numbers in tables */
+.number-positive {
+    color: #2ecc71;
 }
 
-/* Toast notifications */
-.toast-container {
-    z-index: 1100;
+.number-negative {
+    color: #e74c3c;
 }
 
-/* Score badge colors */
-.badge-eqs {
-    background-color: var(--bs-info);
-    color: var(--bs-dark);
+/* Page sections */
+.section-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.badge-ugs {
-    background-color: var(--bs-success);
+/* Protocol comparison specific styles */
+.protocol-comparison-header {
+    position: sticky;
+    top: 0;
+    background-color: var(--bs-dark);
+    z-index: 100;
+    padding: 0.5rem 0;
 }
 
-.badge-fvs {
-    background-color: var(--bs-warning);
-    color: var(--bs-dark);
+.comparison-table .protocol-col {
+    min-width: 160px;
 }
 
-.badge-ss {
-    background-color: var(--bs-danger);
-}
-
-/* Custom animation for loading states */
-@keyframes pulse {
-    0% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
-    100% {
-        opacity: 1;
-    }
-}
-
-.loading-pulse {
-    animation: pulse 1.5s infinite ease-in-out;
-}
-
-/* Responsive adjustments */
+/* Responsive adjustments for mobile */
 @media (max-width: 768px) {
-    .card-stat {
-        padding: 1rem;
-    }
-    
-    .stat-value {
-        font-size: 1.5rem;
+    .protocol-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.875rem;
     }
     
     .table-responsive {
-        font-size: 0.9rem;
+        overflow-x: auto;
+    }
+    
+    .mobile-scroll-indicator {
+        display: block;
+        text-align: center;
+        color: var(--bs-secondary);
+        font-size: 0.75rem;
+        margin: 0.5rem 0;
     }
 }
 
-/* Chart container styling */
+/* Charts container */
 .chart-container {
     position: relative;
     height: 300px;
-    margin-bottom: 1.5rem;
+    width: 100%;
 }
 
-/* Protocol card styling */
-.protocol-card {
+/* Loading indicator for async operations */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
     height: 100%;
-}
-
-.protocol-card .card-body {
+    background-color: rgba(0, 0, 0, 0.7);
     display: flex;
-    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
 }
 
-.protocol-card .card-footer {
-    margin-top: auto;
-}
-
-/* Score indicator styling */
-.score-indicator {
-    display: inline-block;
-    width: 15px;
-    height: 15px;
+.spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
-    margin-right: 5px;
+    border-top: 4px solid var(--bs-primary);
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
 }
 
-.score-indicator.high {
-    background-color: var(--bs-success);
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-.score-indicator.medium {
-    background-color: var(--bs-warning);
-}
-
-.score-indicator.low {
-    background-color: var(--bs-danger);
-}
-
-/* Category pills */
-.category-pill {
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.category-pill:hover {
-    transform: translateY(-2px);
-}
-
-.category-pill.active {
-    box-shadow: 0 0 0 2px var(--bs-primary);
-}
-
-/* How3 score gauge styling */
-.how3-gauge {
-    position: relative;
-    width: 150px;
-    height: 150px;
-    margin: 0 auto;
-}
-
-.gauge-circle {
-    fill: none;
-    stroke: var(--bs-gray-700);
-    stroke-width: 10;
-}
-
-.gauge-progress {
-    fill: none;
-    stroke-width: 10;
-    stroke-linecap: round;
-    transition: stroke-dashoffset 0.5s ease;
-}
-
-.gauge-text {
-    font-size: 2.5rem;
-    font-weight: bold;
-    text-anchor: middle;
-    dominant-baseline: central;
-}
-
-/* Custom scrollbar for the dark theme */
-::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-}
-
-::-webkit-scrollbar-track {
-    background: #343a40;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #495057;
-    border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #6c757d;
+/* For jinja2 template formatting helper */
+.jinja-filter-helper {
+    display: none;
 }

@@ -1,0 +1,60 @@
+{% extends 'layout.html' %}
+
+{% block title %}Protocol Categories - How3.io{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Protocol Categories</h1>
+
+<div class="row row-cols-1 row-cols-md-2 g-4 mb-5">
+    {% for data in category_data %}
+    <div class="col">
+        <div class="card h-100">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ data.category.name }}</h5>
+                    <span class="badge bg-secondary">{{ data.protocol_count }} protocols</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="card-text">{{ data.category.description }}</p>
+                
+                {% if data.protocol_count > 0 %}
+                <h6 class="mt-3 mb-2">Average Category Scores</h6>
+                <div class="progress mb-2" style="height: 20px;">
+                    <div class="progress-bar bg-primary" style="width: {{ data.avg_eqs }}%;" title="Earnings Quality">
+                        EQS
+                    </div>
+                    <div class="progress-bar bg-success" style="width: {{ data.avg_ugs }}%;" title="User Growth">
+                        UGS
+                    </div>
+                    <div class="progress-bar bg-info" style="width: {{ data.avg_fvs }}%;" title="Fair Value">
+                        FVS
+                    </div>
+                    <div class="progress-bar bg-warning" style="width: {{ data.avg_ss }}%;" title="Safety">
+                        SS
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-6">
+                        <small class="d-block text-muted">Avg How3 Score</small>
+                        <span class="h4">{{ "%.1f"|format(data.avg_how3) }}</span>
+                    </div>
+                    <div class="col-6">
+                        <small class="d-block text-muted">Avg P/R Ratio</small>
+                        <span class="h4">{{ "%.1f"|format(data.category.avg_revenue_multiple) }}x</span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info mt-3">No protocols in this category yet.</div>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="/protocols?category={{ data.category.name }}" class="btn btn-outline-primary w-100">View Protocols</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,241 +1,278 @@
-import logging
 import numpy as np
-from typing import Dict, List, Any, Tuple
+import logging
 from datetime import datetime, timedelta
-from config import (
-    STABILITY_WEIGHT, MAGNITUDE_WEIGHT, USER_WEIGHTS, 
-    SCORE_RANGES, FVS_PS_RATIO_THRESHOLDS
-)
+from sqlalchemy import func
+from app import db
+from models import Protocol, RevenueData, UserData, Score, Category
+from config import get_config
+from utils import normalize_score, calculate_percentile_rank
+from certik_client import CertikClient
 
 logger = logging.getLogger(__name__)
 
 class ScoreCalculator:
-    """Calculator for protocol quality scores."""
+    """Class for calculating standardized scores for protocols"""
     
-    @staticmethod
-    def calculate_eqs(revenue_data: List[Dict[str, Any]], category: str) -> float:
-        """Calculate Earnings Quality Score.
+    def __init__(self):
+        self.config = get_config()
+        self.certik_client = CertikClient()
         
-        Args:
-            revenue_data: List of monthly revenue data
-            category: Protocol category for comparative analysis
-            
-        Returns:
-            Earnings Quality Score (0-100)
-        """
-        if not revenue_data:
-            logger.warning("No revenue data available for EQS calculation")
-            return 0
+        # Weighting factors from config
+        self.rev_stability_weight = self.config.REVENUE_STABILITY_WEIGHT
+        self.rev_magnitude_weight = self.config.REVENUE_MAGNITUDE_WEIGHT
         
+        self.active_addr_weight = self.config.ACTIVE_ADDRESSES_WEIGHT
+        self.tx_count_weight = self.config.TRANSACTION_COUNT_WEIGHT
+        self.tx_volume_weight = self.config.TRANSACTION_VOLUME_WEIGHT
+        
+        self.eqs_weight = self.config.EQS_WEIGHT
+        self.ugs_weight = self.config.UGS_WEIGHT
+        self.fvs_weight = self.config.FVS_WEIGHT
+        self.ss_weight = self.config.SS_WEIGHT
+    
+    def calculate_protocol_scores(self, protocol_id=None):
+        """Calculate scores for a specific protocol or all protocols"""
         try:
-            # Calculate stability component
-            mom_changes = [float(data.get('mom_change', 0)) for data in revenue_data if data.get('mom_change') is not None]
-            if not mom_changes:
+            if protocol_id:
+                protocols = [Protocol.query.get(protocol_id)]
+                if not protocols[0]:
+                    logger.error(f"Protocol with ID {protocol_id} not found")
+                    return False
+            else:
+                protocols = Protocol.query.all()
+            
+            for protocol in protocols:
+                eqs = self._calculate_eqs(protocol)
+                ugs = self._calculate_ugs(protocol)
+                fvs = self._calculate_fvs(protocol)
+                ss = self._get_safety_score(protocol)
+                
+                # Calculate combined How3 score
+                how3_score = float(
+                    self.eqs_weight * eqs + 
+                    self.ugs_weight * ugs + 
+                    self.fvs_weight * fvs + 
+                    self.ss_weight * ss
+                )
+                
+                # Create or update score record
+                existing_score = Score.query.filter_by(protocol_id=protocol.id).first()
+                
+                if existing_score:
+                    existing_score.earnings_quality_score = float(eqs)
+                    existing_score.user_growth_score = float(ugs)
+                    existing_score.fair_value_score = float(fvs)
+                    existing_score.safety_score = float(ss)
+                    existing_score.how3_score = float(how3_score)
+                    existing_score.timestamp = datetime.utcnow()
+                else:
+                    new_score = Score(
+                        protocol_id=protocol.id,
+                        earnings_quality_score=float(eqs),
+                        user_growth_score=float(ugs),
+                        fair_value_score=float(fvs),
+                        safety_score=float(ss),
+                        how3_score=float(how3_score),
+                        timestamp=datetime.utcnow()
+                    )
+                    db.session.add(new_score)
+            
+            db.session.commit()
+            return True
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error calculating scores: {str(e)}")
+            return False
+    
+    def _calculate_eqs(self, protocol):
+        """Calculate Earnings Quality Score for a protocol"""
+        try:
+            # Get last 6 months of revenue data
+            end_date = datetime.utcnow().date()
+            start_date = end_date - timedelta(days=180)
+            
+            revenue_data = RevenueData.query.filter(
+                RevenueData.protocol_id == protocol.id,
+                RevenueData.month >= start_date,
+                RevenueData.month <= end_date
+            ).order_by(RevenueData.month).all()
+            
+            if not revenue_data or len(revenue_data) < 2:
+                logger.warning(f"Insufficient revenue data for {protocol.name}")
+                return 0
+            
+            # Calculate stability metric (lower variance is better)
+            mom_changes = [rd.stability_score for rd in revenue_data if rd.stability_score is not None]
+            if mom_changes:
+                # Convert to numpy array for calculations
+                mom_changes = np.array(mom_changes)
+                
+                # Calculate stability score (inverse of standard deviation, normalized)
+                stability_raw = 1 / (1 + np.std(mom_changes))
+                stability_score = normalize_score(stability_raw, 0, 1)
+            else:
                 stability_score = 0
-            else:
-                # Lower volatility is better - inverse of standard deviation normalized
-                volatility = np.std(mom_changes) if len(mom_changes) > 1 else 1
-                # Cap volatility to avoid extreme values
-                capped_volatility = min(volatility, 1.0)
-                stability_score = (1 - capped_volatility) * 100
             
-            # Calculate magnitude component
-            total_fees = [float(data.get('total_fees', 0)) for data in revenue_data]
-            if not total_fees:
-                magnitude_score = 0
-            else:
-                avg_monthly_revenue = sum(total_fees) / len(total_fees)
-                # Logarithmic scaling for revenue magnitude (adjustable based on category)
-                # This assumes higher revenue is better, scaled logarithmically
-                if avg_monthly_revenue <= 0:
-                    magnitude_score = 0
-                else:
-                    # Scale based on category benchmarks
-                    category_scaling = ScoreCalculator._get_category_revenue_scaling(category)
-                    log_revenue = np.log10(max(1, avg_monthly_revenue))
-                    magnitude_score = min(100, (log_revenue / category_scaling) * 100)
+            # Get magnitude score (already calculated relative to category peers)
+            latest_data = revenue_data[-1] if revenue_data else None
+            magnitude_score = latest_data.magnitude_score if latest_data and latest_data.magnitude_score else 0
             
-            # Combined score
-            eqs = (STABILITY_WEIGHT * stability_score) + (MAGNITUDE_WEIGHT * magnitude_score)
+            # Combined EQS using weighted average
+            eqs = (
+                self.rev_stability_weight * stability_score + 
+                self.rev_magnitude_weight * magnitude_score
+            )
             
-            # Ensure score is within range
-            return max(SCORE_RANGES['eqs'][0], min(SCORE_RANGES['eqs'][1], eqs))
-        
+            return min(max(eqs, 0), 100)  # Ensure score is between 0 and 100
+            
         except Exception as e:
-            logger.error(f"Error calculating EQS: {e}")
+            logger.error(f"Error calculating EQS for {protocol.name}: {str(e)}")
             return 0
     
-    @staticmethod
-    def calculate_ugs(user_data: List[Dict[str, Any]]) -> float:
-        """Calculate User Growth Score.
-        
-        Args:
-            user_data: List of monthly user metrics data
-            
-        Returns:
-            User Growth Score (0-100)
-        """
-        if not user_data:
-            logger.warning("No user data available for UGS calculation")
-            return 0
-        
+    def _calculate_ugs(self, protocol):
+        """Calculate User Growth Score for a protocol"""
         try:
-            # Calculate scores for each component
-            address_scores = []
-            tx_count_scores = []
-            tx_volume_scores = []
+            # Get last 6 months of user data
+            end_date = datetime.utcnow().date()
+            start_date = end_date - timedelta(days=180)
             
-            for data in user_data:
-                # Active addresses component
-                if data.get('active_address_percentile') is not None:
-                    address_score = float(data.get('active_address_percentile', 0)) * 100
-                    address_scores.append(address_score)
+            user_data = UserData.query.filter(
+                UserData.protocol_id == protocol.id,
+                UserData.month >= start_date,
+                UserData.month <= end_date
+            ).order_by(UserData.month).all()
+            
+            if not user_data:
+                logger.warning(f"No user data found for {protocol.name}")
+                return 0
+            
+            # Get the latest user data metrics
+            latest_data = user_data[-1]
+            
+            # Get protocols in the same category
+            category_protocols = Protocol.query.filter_by(category=protocol.category).all()
+            protocol_ids = [p.id for p in category_protocols]
+            
+            # Get the latest user data for all protocols in the category
+            latest_month = db.session.query(func.max(UserData.month)).scalar()
+            category_data = UserData.query.filter(
+                UserData.protocol_id.in_(protocol_ids),
+                UserData.month == latest_month
+            ).all()
+            
+            if not category_data:
+                logger.warning(f"No category data found for {protocol.category}")
+                return 0
+            
+            # Calculate percentile ranks for each metric
+            active_addr_rank = calculate_percentile_rank(
+                [data.active_addresses for data in category_data],
+                latest_data.active_addresses
+            )
+            
+            tx_count_rank = calculate_percentile_rank(
+                [data.transaction_count for data in category_data],
+                latest_data.transaction_count
+            )
+            
+            tx_volume_rank = calculate_percentile_rank(
+                [data.transaction_volume for data in category_data],
+                latest_data.transaction_volume
+            )
+            
+            # Calculate growth trend factor (positive growth rates are better)
+            growth_factors = []
+            if latest_data.active_address_growth is not None:
+                growth_factors.append(normalize_score(latest_data.active_address_growth, -100, 100))
+            if latest_data.transaction_count_growth is not None:
+                growth_factors.append(normalize_score(latest_data.transaction_count_growth, -100, 100))
+            if latest_data.transaction_volume_growth is not None:
+                growth_factors.append(normalize_score(latest_data.transaction_volume_growth, -100, 100))
+            
+            growth_factor = np.mean(growth_factors) if growth_factors else 0
+            
+            # Combined UGS using weighted average of metrics and growth trend
+            ugs = (
+                0.7 * (
+                    self.active_addr_weight * active_addr_rank +
+                    self.tx_count_weight * tx_count_rank +
+                    self.tx_volume_weight * tx_volume_rank
+                ) +
+                0.3 * growth_factor
+            )
+            
+            return min(max(ugs * 100, 0), 100)  # Ensure score is between 0 and 100
+            
+        except Exception as e:
+            logger.error(f"Error calculating UGS for {protocol.name}: {str(e)}")
+            return 0
+    
+    def _calculate_fvs(self, protocol):
+        """Calculate Fair Value Score for a protocol"""
+        try:
+            if not protocol.market_cap or not protocol.annual_revenue or protocol.annual_revenue <= 0:
+                logger.warning(f"Missing market cap or revenue data for {protocol.name}")
+                return 0
+            
+            # Calculate P/S ratio (Price to Sales, or Market Cap to Annual Revenue)
+            ps_ratio = protocol.market_cap / protocol.annual_revenue
+            
+            # Get category average P/S ratio
+            category = Category.query.filter_by(name=protocol.category).first()
+            category_avg_ps = category.avg_revenue_multiple if category else None
+            
+            if not category_avg_ps or category_avg_ps <= 0:
+                # If no category average, calculate it from all protocols in the category
+                category_protocols = Protocol.query.filter_by(category=protocol.category).all()
                 
-                # Transaction count component
-                if data.get('transaction_count_percentile') is not None:
-                    tx_count_score = float(data.get('transaction_count_percentile', 0)) * 100
-                    tx_count_scores.append(tx_count_score)
+                valid_protocols = [p for p in category_protocols 
+                                   if p.market_cap and p.annual_revenue and p.annual_revenue > 0]
                 
-                # Transaction volume component
-                if data.get('transaction_volume_percentile') is not None:
-                    tx_volume_score = float(data.get('transaction_volume_percentile', 0)) * 100
-                    tx_volume_scores.append(tx_volume_score)
-            
-            # Average the scores for each component
-            avg_address_score = sum(address_scores) / len(address_scores) if address_scores else 0
-            avg_tx_count_score = sum(tx_count_scores) / len(tx_count_scores) if tx_count_scores else 0
-            avg_tx_volume_score = sum(tx_volume_scores) / len(tx_volume_scores) if tx_volume_scores else 0
-            
-            # Calculate growth rates
-            growth_rates = {
-                'active_addresses': [float(data.get('active_address_growth_rate', 0)) 
-                                  for data in user_data if data.get('active_address_growth_rate') is not None],
-                'transaction_count': [float(data.get('transaction_count_growth_rate', 0)) 
-                                   for data in user_data if data.get('transaction_count_growth_rate') is not None],
-                'transaction_volume': [float(data.get('transaction_volume_growth_rate', 0)) 
-                                    for data in user_data if data.get('transaction_volume_growth_rate') is not None]
-            }
-            
-            growth_scores = {}
-            for metric, rates in growth_rates.items():
-                if not rates:
-                    growth_scores[metric] = 0
+                if valid_protocols:
+                    ratios = [p.market_cap / p.annual_revenue for p in valid_protocols]
+                    category_avg_ps = np.median(ratios)  # Using median to avoid outlier influence
+                    
+                    # Update category average
+                    if category:
+                        category.avg_revenue_multiple = category_avg_ps
+                        db.session.commit()
                 else:
-                    # Positive consistent growth is ideal
-                    avg_growth = sum(rates) / len(rates)
-                    # Normalize growth rate (cap at reasonable values)
-                    normalized_growth = min(100, max(-100, avg_growth))
-                    # Convert to 0-100 scale (50 is neutral, >50 is positive growth, <50 is negative)
-                    growth_scores[metric] = 50 + (normalized_growth / 2)
+                    # Fallback to a reasonable default if no data is available
+                    category_avg_ps = 30
             
-            # Combine percentile scores and growth scores
-            component_scores = {
-                'active_addresses': (avg_address_score + growth_scores.get('active_addresses', 0)) / 2,
-                'transaction_count': (avg_tx_count_score + growth_scores.get('transaction_count', 0)) / 2,
-                'transaction_volume': (avg_tx_volume_score + growth_scores.get('transaction_volume', 0)) / 2
-            }
-            
-            # Weighted average of component scores
-            ugs = sum(score * USER_WEIGHTS[metric] for metric, score in component_scores.items())
-            
-            # Ensure score is within range
-            return max(SCORE_RANGES['ugs'][0], min(SCORE_RANGES['ugs'][1], ugs))
-        
-        except Exception as e:
-            logger.error(f"Error calculating UGS: {e}")
-            return 0
-    
-    @staticmethod
-    def calculate_fvs(market_cap: int, annual_revenue: int, category: str) -> float:
-        """Calculate Fair Value Score.
-        
-        Args:
-            market_cap: Current market capitalization
-            annual_revenue: Annual revenue in USD
-            category: Protocol category for benchmark comparison
-            
-        Returns:
-            Fair Value Score (0-100)
-        """
-        try:
-            if market_cap <= 0 or annual_revenue <= 0:
-                logger.warning("Invalid market cap or revenue for FVS calculation")
-                return 50  # Neutral score when data is missing
-            
-            # Calculate Price-to-Sales ratio (P/S)
-            ps_ratio = market_cap / annual_revenue
-            
-            # Get category-specific thresholds
-            thresholds = FVS_PS_RATIO_THRESHOLDS.get(category, FVS_PS_RATIO_THRESHOLDS['default'])
-            undervalued_threshold = thresholds['undervalued']
-            overvalued_threshold = thresholds['overvalued']
-            
-            # Calculate score based on P/S ratio
-            if ps_ratio <= undervalued_threshold:
-                # Undervalued - higher score
-                fvs = 100
-            elif ps_ratio >= overvalued_threshold:
-                # Overvalued - lower score
-                fvs = 0
+            # Calculate how undervalued/overvalued the protocol is compared to category average
+            # Lower P/S ratio is better (undervalued)
+            if ps_ratio <= category_avg_ps:
+                # Undervalued or fairly valued
+                value_factor = 1 - (ps_ratio / category_avg_ps)
             else:
-                # Linear interpolation between thresholds
-                fvs = 100 - ((ps_ratio - undervalued_threshold) / (overvalued_threshold - undervalued_threshold) * 100)
+                # Overvalued
+                overvalued_factor = min((ps_ratio / category_avg_ps) - 1, 10)  # Cap at 10x overvaluation
+                value_factor = -overvalued_factor
             
-            return max(SCORE_RANGES['fvs'][0], min(SCORE_RANGES['fvs'][1], fvs))
-        
+            # Normalize to 0-100 scale
+            fvs = normalize_score(value_factor, -10, 1) * 100
+            
+            return min(max(fvs, 0), 100)  # Ensure score is between 0 and 100
+            
         except Exception as e:
-            logger.error(f"Error calculating FVS: {e}")
-            return 50  # Neutral score on error
-    
-    @staticmethod
-    def calculate_how3_score(eqs: float, ugs: float, fvs: float, ss: float) -> float:
-        """Calculate combined How3 score.
-        
-        Args:
-            eqs: Earnings Quality Score
-            ugs: User Growth Score
-            fvs: Fair Value Score
-            ss: Safety Score
-            
-        Returns:
-            Combined How3 Score (0-100)
-        """
-        try:
-            # Simple average of all scores
-            how3_score = (eqs + ugs + fvs + ss) / 4
-            
-            return round(how3_score, 1)
-        
-        except Exception as e:
-            logger.error(f"Error calculating How3 score: {e}")
+            logger.error(f"Error calculating FVS for {protocol.name}: {str(e)}")
             return 0
     
-    @staticmethod
-    def _get_category_revenue_scaling(category: str) -> float:
-        """Get the revenue scaling factor for a specific category.
-        
-        Args:
-            category: Protocol category
+    def _get_safety_score(self, protocol):
+        """Get Safety Score from Certik Skynet"""
+        try:
+            # This could be replaced with actual API call to Certik when available
+            safety_score = self.certik_client.get_security_score(protocol.name)
             
-        Returns:
-            Scaling factor for revenue magnitude calculation
-        """
-        # Different categories have different expected revenue ranges
-        # These values should be calibrated based on actual data
-        category_scales = {
-            'DeFi': 9,         # Expect up to $1B annual revenue
-            'Layer 1': 10,     # Expect up to $10B annual revenue
-            'Layer 2': 8,      # Expect up to $100M annual revenue
-            'Oracle': 8,       # Expect up to $100M annual revenue
-            'Infrastructure': 8,
-            'Gaming': 7,
-            'NFT': 7,
-            'DAO': 7,
-            'Privacy': 7,
-            'Storage': 7,
-            'Analytics': 7,
-            'Exchange': 9,
-            'default': 8       # Default scaling
-        }
-        
-        return category_scales.get(category, category_scales['default'])
+            # Normalize to 0-100 scale if needed
+            if safety_score is not None:
+                return min(max(safety_score, 0), 100)
+            else:
+                # Default to a moderate score if data is unavailable
+                return 50
+            
+        except Exception as e:
+            logger.error(f"Error getting safety score for {protocol.name}: {str(e)}")
+            return 50

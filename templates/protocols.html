@@ -5,223 +5,82 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>All Protocols</h1>
-    <div class="dropdown">
-        <button class="btn btn-secondary dropdown-toggle" type="button" id="categoryDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            {% if current_category %}{{ current_category }}{% else %}All Categories{% endif %}
-        </button>
-        <ul class="dropdown-menu" aria-labelledby="categoryDropdown">
-            <li><a class="dropdown-item {% if not current_category %}active{% endif %}" href="{{ url_for('protocols') }}">All Categories</a></li>
-            {% for category in categories %}
-            <li><a class="dropdown-item {% if current_category == category %}active{% endif %}" href="{{ url_for('protocols', category=category) }}">{{ category }}</a></li>
-            {% endfor %}
-        </ul>
+    <div class="d-flex">
+        <div class="dropdown me-2">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="categoryFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ selected_category or 'All Categories' }}
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="categoryFilterDropdown">
+                <li><a class="dropdown-item {% if not selected_category %}active{% endif %}" href="/protocols">All Categories</a></li>
+                {% for category in categories %}
+                <li><a class="dropdown-item {% if selected_category == category.name %}active{% endif %}" href="/protocols?category={{ category.name }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}">{{ category.name }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                Sort by: 
+                {% if sort_by == 'earnings_quality_score' %}Earnings Quality
+                {% elif sort_by == 'user_growth_score' %}User Growth
+                {% elif sort_by == 'fair_value_score' %}Fair Value
+                {% elif sort_by == 'safety_score' %}Safety
+                {% else %}How3 Score{% endif %}
+                ({{ sort_order == 'desc' ? 'Descending' : 'Ascending' }})
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                <li><a class="dropdown-item {% if sort_by == 'how3_score' and sort_order == 'desc' %}active{% endif %}" href="/protocols?category={{ selected_category }}&sort_by=how3_score&sort_order=desc">How3 Score (High to Low)</a></li>
+                <li><a class="dropdown-item {% if sort_by == 'how3_score' and sort_order == 'asc' %}active{% endif %}" href="/protocols?category={{ selected_category }}&sort_by=how3_score&sort_order=asc">How3 Score (Low to High)</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item {% if sort_by == 'earnings_quality_score' and sort_order == 'desc' %}active{% endif %}" href="/protocols?category={{ selected_category }}&sort_by=earnings_quality_score&sort_order=desc">Earnings Quality (High to Low)</a></li>
+                <li><a class="dropdown-item {% if sort_by == 'user_growth_score' and sort_order == 'desc' %}active{% endif %}" href="/protocols?category={{ selected_category }}&sort_by=user_growth_score&sort_order=desc">User Growth (High to Low)</a></li>
+                <li><a class="dropdown-item {% if sort_by == 'fair_value_score' and sort_order == 'desc' %}active{% endif %}" href="/protocols?category={{ selected_category }}&sort_by=fair_value_score&sort_order=desc">Fair Value (High to Low)</a></li>
+                <li><a class="dropdown-item {% if sort_by == 'safety_score' and sort_order == 'desc' %}active{% endif %}" href="/protocols?category={{ selected_category }}&sort_by=safety_score&sort_order=desc">Safety (High to Low)</a></li>
+            </ul>
+        </div>
     </div>
 </div>
 
-{% if has_data %}
 <div class="table-responsive">
     <table class="table table-hover">
         <thead>
             <tr>
-                <th>
-                    <a href="{{ url_for('protocols', category=current_category, sort='name', order='asc' if current_sort == 'name' and current_order == 'desc' else 'desc') }}" class="text-decoration-none text-light">
-                        Protocol
-                        {% if current_sort == 'name' %}
-                            <i class="fas fa-sort-{{ 'down' if current_order == 'desc' else 'up' }}"></i>
-                        {% endif %}
-                    </a>
-                </th>
+                <th>Protocol</th>
                 <th>Category</th>
-                <th>
-                    <a href="{{ url_for('protocols', category=current_category, sort='how3_score', order='asc' if current_sort == 'how3_score' and current_order == 'desc' else 'desc') }}" class="text-decoration-none text-light">
-                        How3 Score
-                        {% if current_sort == 'how3_score' %}
-                            <i class="fas fa-sort-{{ 'down' if current_order == 'desc' else 'up' }}"></i>
-                        {% endif %}
-                    </a>
-                </th>
-                <th>
-                    <a href="{{ url_for('protocols', category=current_category, sort='eqs', order='asc' if current_sort == 'eqs' and current_order == 'desc' else 'desc') }}" class="text-decoration-none text-light">
-                        EQS
-                        {% if current_sort == 'eqs' %}
-                            <i class="fas fa-sort-{{ 'down' if current_order == 'desc' else 'up' }}"></i>
-                        {% endif %}
-                    </a>
-                </th>
-                <th>
-                    <a href="{{ url_for('protocols', category=current_category, sort='ugs', order='asc' if current_sort == 'ugs' and current_order == 'desc' else 'desc') }}" class="text-decoration-none text-light">
-                        UGS
-                        {% if current_sort == 'ugs' %}
-                            <i class="fas fa-sort-{{ 'down' if current_order == 'desc' else 'up' }}"></i>
-                        {% endif %}
-                    </a>
-                </th>
-                <th>
-                    <a href="{{ url_for('protocols', category=current_category, sort='fvs', order='asc' if current_sort == 'fvs' and current_order == 'desc' else 'desc') }}" class="text-decoration-none text-light">
-                        FVS
-                        {% if current_sort == 'fvs' %}
-                            <i class="fas fa-sort-{{ 'down' if current_order == 'desc' else 'up' }}"></i>
-                        {% endif %}
-                    </a>
-                </th>
-                <th>
-                    <a href="{{ url_for('protocols', category=current_category, sort='ss', order='asc' if current_sort == 'ss' and current_order == 'desc' else 'desc') }}" class="text-decoration-none text-light">
-                        SS
-                        {% if current_sort == 'ss' %}
-                            <i class="fas fa-sort-{{ 'down' if current_order == 'desc' else 'up' }}"></i>
-                        {% endif %}
-                    </a>
-                </th>
+                <th>How3 Score</th>
+                <th>Earnings Quality</th>
+                <th>User Growth</th>
+                <th>Fair Value</th>
+                <th>Safety</th>
                 <th>Market Cap</th>
                 <th>Annual Revenue</th>
-                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for protocol, score in protocols %}
-            <tr>
+            <tr class="clickable-row" data-href="/protocol/{{ protocol.id }}">
                 <td>
-                    <a href="{{ url_for('protocol_detail', protocol_id=protocol.id) }}" class="text-decoration-none">
-                        <strong>{{ protocol.name }}</strong>
-                        <span class="text-muted ms-2">{{ protocol.symbol }}</span>
-                    </a>
+                    <strong>{{ protocol.name }}</strong>
+                    <span class="badge bg-secondary">{{ protocol.symbol }}</span>
                 </td>
-                <td><span class="badge bg-secondary">{{ protocol.category }}</span></td>
-                <td><span class="badge bg-primary p-2">{{ score.how3_score }}</span></td>
+                <td>{{ protocol.category }}</td>
                 <td>
-                    <div class="progress" style="height: 8px; width: 60px;">
-                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ score.eqs }}%;" aria-valuenow="{{ score.eqs }}" aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                    <small class="d-block mt-1">{{ score.eqs | round(1) }}</small>
+                    <span class="badge rounded-pill 
+                        {% if score.how3_score >= 80 %}score-excellent
+                        {% elif score.how3_score >= 70 %}score-good
+                        {% elif score.how3_score >= 50 %}score-moderate
+                        {% else %}score-poor{% endif %}">
+                        {{ "%.1f"|format(score.how3_score) }}
+                    </span>
                 </td>
-                <td>
-                    <div class="progress" style="height: 8px; width: 60px;">
-                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ score.ugs }}%;" aria-valuenow="{{ score.ugs }}" aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                    <small class="d-block mt-1">{{ score.ugs | round(1) }}</small>
-                </td>
-                <td>
-                    <div class="progress" style="height: 8px; width: 60px;">
-                        <div class="progress-bar bg-warning" role="progressbar" style="width: {{ score.fvs }}%;" aria-valuenow="{{ score.fvs }}" aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                    <small class="d-block mt-1">{{ score.fvs | round(1) }}</small>
-                </td>
-                <td>
-                    <div class="progress" style="height: 8px; width: 60px;">
-                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ score.ss }}%;" aria-valuenow="{{ score.ss }}" aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                    <small class="d-block mt-1">{{ score.ss | round(1) }}</small>
-                </td>
-                <td>${{ (protocol.market_cap / 1000000) | round(1) }}M</td>
-                <td>${{ (protocol.annual_revenue / 1000000) | round(1) }}M</td>
-                <td>
-                    <div class="btn-group">
-                        <a href="{{ url_for('protocol_detail', protocol_id=protocol.id) }}" class="btn btn-sm btn-outline-light">Details</a>
-                        <button type="button" class="btn btn-sm btn-outline-light add-to-compare" data-protocol-id="{{ protocol.id }}">Compare</button>
-                    </div>
-                </td>
+                <td>{{ "%.1f"|format(score.earnings_quality_score) }}</td>
+                <td>{{ "%.1f"|format(score.user_growth_score) }}</td>
+                <td>{{ "%.1f"|format(score.fair_value_score) }}</td>
+                <td>{{ "%.1f"|format(score.safety_score) }}</td>
+                <td>${{ "{:,.0f}".format(protocol.market_cap) }}</td>
+                <td>${{ "{:,.0f}".format(protocol.annual_revenue) }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-{% else %}
-<div class="alert alert-info mb-5" role="alert">
-    <h4 class="alert-heading">No Protocols Available</h4>
-    <p>Currently, there are no protocols in the database. Data will be added as protocols are analyzed.</p>
-    <hr>
-    <p class="mb-0">The platform will automatically fetch and process data from Dune Analytics and Certik once protocols are added to the system.</p>
-</div>
-{% endif %}
-
-<div class="fixed-bottom p-3 bg-dark compare-bar d-none">
-    <div class="container d-flex justify-content-between align-items-center">
-        <div>
-            <span class="me-2">Selected for comparison:</span>
-            <span id="selected-count" class="badge bg-primary">0</span>
-        </div>
-        <a href="#" id="compare-btn" class="btn btn-primary">Compare Selected</a>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    // Compare functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        const compareButtons = document.querySelectorAll('.add-to-compare');
-        const compareBar = document.querySelector('.compare-bar');
-        const selectedCountBadge = document.getElementById('selected-count');
-        const compareBtn = document.getElementById('compare-btn');
-        
-        let selectedProtocols = [];
-        
-        // Check if there are already selected protocols in localStorage
-        const storedProtocols = localStorage.getItem('compareProtocols');
-        if (storedProtocols) {
-            selectedProtocols = JSON.parse(storedProtocols);
-            updateCompareUI();
-        }
-        
-        compareButtons.forEach(button => {
-            const protocolId = button.dataset.protocolId;
-            
-            // Mark buttons for already selected protocols
-            if (selectedProtocols.includes(protocolId)) {
-                button.classList.remove('btn-outline-light');
-                button.classList.add('btn-success');
-                button.textContent = 'Selected';
-            }
-            
-            button.addEventListener('click', function() {
-                const protocolId = this.dataset.protocolId;
-                
-                if (selectedProtocols.includes(protocolId)) {
-                    // Remove from selection
-                    selectedProtocols = selectedProtocols.filter(id => id !== protocolId);
-                    this.classList.remove('btn-success');
-                    this.classList.add('btn-outline-light');
-                    this.textContent = 'Compare';
-                } else {
-                    // Add to selection (max 4)
-                    if (selectedProtocols.length < 4) {
-                        selectedProtocols.push(protocolId);
-                        this.classList.remove('btn-outline-light');
-                        this.classList.add('btn-success');
-                        this.textContent = 'Selected';
-                    } else {
-                        alert('You can select a maximum of 4 protocols for comparison.');
-                    }
-                }
-                
-                updateCompareUI();
-                
-                // Save to localStorage
-                localStorage.setItem('compareProtocols', JSON.stringify(selectedProtocols));
-            });
-        });
-        
-        compareBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            if (selectedProtocols.length < 2) {
-                alert('Please select at least 2 protocols to compare.');
-                return;
-            }
-            
-            const queryString = selectedProtocols.map(id => `ids[]=${id}`).join('&');
-            window.location.href = `/compare?${queryString}`;
-        });
-        
-        function updateCompareUI() {
-            selectedCountBadge.textContent = selectedProtocols.length;
-            
-            if (selectedProtocols.length > 0) {
-                compareBar.classList.remove('d-none');
-            } else {
-                compareBar.classList.add('d-none');
-            }
-        }
-    });
-</script>
 {% endblock %}

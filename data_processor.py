@@ -1,306 +1,222 @@
+import pandas as pd
+import numpy as np
 import logging
-import json
-from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
-
+from sqlalchemy.exc import SQLAlchemyError
 from app import db
-from models import Protocol, RevenueData, UserData, Score, DuneQuery
-from dune_api import DuneAnalyticsAPI
-from certik_api import CertikAPI
-from score_calculator import ScoreCalculator
+from models import Protocol, RevenueData, UserData, Category, Score
+from dune_client import DuneClient
+from config import get_config
+from utils import normalize_score
 
 logger = logging.getLogger(__name__)
 
 class DataProcessor:
-    """Processes data from various sources to calculate protocol scores."""
+    """Class for processing and storing data from Dune Analytics"""
     
     def __init__(self):
-        self.dune_api = DuneAnalyticsAPI()
-        self.certik_api = CertikAPI()
+        self.config = get_config()
+        self.dune_client = DuneClient()
     
-    def update_protocol_data(self, protocol_id: int) -> bool:
-        """Update data for a specific protocol and recalculate scores.
-        
-        Args:
-            protocol_id: ID of the protocol to update
-            
-        Returns:
-            Success status
-        """
+    def process_revenue_data(self, protocol_name):
+        """Process and store revenue data for a protocol"""
         try:
-            # Get protocol
-            protocol = Protocol.query.get(protocol_id)
+            protocol = Protocol.query.filter_by(name=protocol_name).first()
             if not protocol:
-                logger.error(f"Protocol with ID {protocol_id} not found")
+                logger.error(f"Protocol {protocol_name} not found in database")
                 return False
             
-            # Get Dune query IDs for this protocol
-            revenue_query = DuneQuery.query.filter_by(protocol_id=protocol_id, query_type='revenue').first()
-            user_query = DuneQuery.query.filter_by(protocol_id=protocol_id, query_type='user').first()
-            
-            if not revenue_query or not user_query:
-                logger.error(f"Missing Dune queries for protocol {protocol.name}")
+            # Get revenue data from Dune Analytics
+            revenue_df = self.dune_client.get_monthly_revenue_data(protocol_name)
+            if revenue_df is None or revenue_df.empty:
+                logger.error(f"Failed to get revenue data for {protocol_name}")
                 return False
             
-            # Fetch data from Dune
-            revenue_data = self.dune_api.get_revenue_data(revenue_query.query_id, protocol.name)
-            user_data = self.dune_api.get_user_data(user_query.query_id, protocol.name)
-            
-            # Update database with new data
-            self._update_revenue_data(protocol_id, revenue_data)
-            self._update_user_data(protocol_id, user_data)
-            
-            # Get security score from Certik
-            security_data = self.certik_api.get_project_security_score(protocol.name)
-            security_score = self.certik_api.normalize_security_score(security_data)
-            
-            # Calculate annual revenue
-            annual_revenue = self._calculate_annual_revenue(protocol_id)
-            
-            # Update protocol with annual revenue
-            protocol.annual_revenue = annual_revenue
-            db.session.commit()
-            
-            # Calculate scores
-            self._calculate_and_save_scores(protocol_id, security_score)
-            
-            logger.info(f"Successfully updated data for protocol {protocol.name}")
-            return True
-        
-        except Exception as e:
-            logger.error(f"Error updating protocol data: {e}")
-            db.session.rollback()
-            return False
-    
-    def update_all_protocols(self) -> Tuple[int, int]:
-        """Update data for all protocols.
-        
-        Returns:
-            Tuple of (success_count, total_count)
-        """
-        protocols = Protocol.query.all()
-        success_count = 0
-        total_count = len(protocols)
-        
-        for protocol in protocols:
-            if self.update_protocol_data(protocol.id):
-                success_count += 1
-        
-        logger.info(f"Updated {success_count}/{total_count} protocols")
-        return success_count, total_count
-    
-    def _update_revenue_data(self, protocol_id: int, revenue_data: List[Dict[str, Any]]) -> None:
-        """Update revenue data for a protocol.
-        
-        Args:
-            protocol_id: ID of the protocol
-            revenue_data: List of revenue data dictionaries
-        """
-        try:
-            for data in revenue_data:
-                month_str = data.get('month')
-                if not month_str:
-                    continue
+            # Process each month's data
+            for _, row in revenue_df.iterrows():
+                month_date = pd.to_datetime(row['month']).date()
                 
-                # Parse the month string to a date object
-                if isinstance(month_str, str):
-                    month_date = datetime.strptime(month_str, "%Y-%m-%d").date()
-                else:
-                    month_date = month_str
-                
-                # Check if we already have this data
-                existing = RevenueData.query.filter_by(
-                    protocol_id=protocol_id, 
+                # Check if we already have data for this month
+                existing_data = RevenueData.query.filter_by(
+                    protocol_id=protocol.id,
                     month=month_date,
-                    source=data.get('source', '')
+                    revenue_source=row.get('source', 'total')
                 ).first()
                 
-                if existing:
+                if existing_data:
                     # Update existing record
-                    existing.total_fees = data.get('total_fees', 0)
-                    existing.mom_change = data.get('mom_change')
+                    existing_data.revenue = row['total_fees']
+                    existing_data.stability_score = row.get('mom_change', 0)
                 else:
                     # Create new record
-                    new_record = RevenueData(
-                        protocol_id=protocol_id,
+                    new_data = RevenueData(
+                        protocol_id=protocol.id,
                         month=month_date,
-                        total_fees=data.get('total_fees', 0),
-                        source=data.get('source', ''),
-                        mom_change=data.get('mom_change')
+                        revenue=row['total_fees'],
+                        revenue_source=row.get('source', 'total'),
+                        stability_score=row.get('mom_change', 0)
                     )
-                    db.session.add(new_record)
+                    db.session.add(new_data)
             
+            # Calculate and update magnitude score relative to category peers
+            self._calculate_revenue_magnitude(protocol)
+            
+            # Commit changes
             db.session.commit()
+            return True
             
         except Exception as e:
-            logger.error(f"Error updating revenue data: {e}")
             db.session.rollback()
+            logger.error(f"Error processing revenue data for {protocol_name}: {str(e)}")
+            return False
     
-    def _update_user_data(self, protocol_id: int, user_data: List[Dict[str, Any]]) -> None:
-        """Update user metrics data for a protocol.
-        
-        Args:
-            protocol_id: ID of the protocol
-            user_data: List of user metrics data dictionaries
-        """
+    def process_user_data(self, protocol_name):
+        """Process and store user growth data for a protocol"""
         try:
-            for data in user_data:
-                month_str = data.get('month')
-                if not month_str:
-                    continue
+            protocol = Protocol.query.filter_by(name=protocol_name).first()
+            if not protocol:
+                logger.error(f"Protocol {protocol_name} not found in database")
+                return False
+            
+            # Get user growth data from Dune Analytics
+            user_df = self.dune_client.get_user_growth_data(protocol_name)
+            if user_df is None or user_df.empty:
+                logger.error(f"Failed to get user data for {protocol_name}")
+                return False
+            
+            # Process each month's data
+            for _, row in user_df.iterrows():
+                month_date = pd.to_datetime(row['month']).date()
                 
-                # Parse the month string to a date object
-                if isinstance(month_str, str):
-                    month_date = datetime.strptime(month_str, "%Y-%m-%d").date()
-                else:
-                    month_date = month_str
-                
-                # Check if we already have this data
-                existing = UserData.query.filter_by(
-                    protocol_id=protocol_id, 
+                # Check if we already have data for this month
+                existing_data = UserData.query.filter_by(
+                    protocol_id=protocol.id,
                     month=month_date
                 ).first()
                 
-                if existing:
+                # Prepare data dictionary
+                data = {
+                    'active_addresses': row.get('active_addresses', 0),
+                    'transaction_count': row.get('transaction_count', 0),
+                    'transaction_volume': row.get('transaction_volume', 0),
+                    'active_address_growth': row.get('active_address_growth_rate', 0),
+                    'transaction_count_growth': row.get('transaction_count_growth_rate', 0),
+                    'transaction_volume_growth': row.get('transaction_volume_growth_rate', 0)
+                }
+                
+                if existing_data:
                     # Update existing record
-                    existing.active_addresses = data.get('active_addresses', 0)
-                    existing.transaction_count = data.get('transaction_count', 0)
-                    existing.transaction_volume = data.get('transaction_volume', 0)
-                    existing.active_address_growth_rate = data.get('active_address_growth_rate')
-                    existing.transaction_count_growth_rate = data.get('transaction_count_growth_rate')
-                    existing.transaction_volume_growth_rate = data.get('transaction_volume_growth_rate')
-                    existing.active_address_percentile = data.get('active_address_percentile')
-                    existing.transaction_count_percentile = data.get('transaction_count_percentile')
-                    existing.transaction_volume_percentile = data.get('transaction_volume_percentile')
+                    for key, value in data.items():
+                        setattr(existing_data, key, value)
                 else:
                     # Create new record
-                    new_record = UserData(
-                        protocol_id=protocol_id,
+                    new_data = UserData(
+                        protocol_id=protocol.id,
                         month=month_date,
-                        active_addresses=data.get('active_addresses', 0),
-                        transaction_count=data.get('transaction_count', 0),
-                        transaction_volume=data.get('transaction_volume', 0),
-                        active_address_growth_rate=data.get('active_address_growth_rate'),
-                        transaction_count_growth_rate=data.get('transaction_count_growth_rate'),
-                        transaction_volume_growth_rate=data.get('transaction_volume_growth_rate'),
-                        active_address_percentile=data.get('active_address_percentile'),
-                        transaction_count_percentile=data.get('transaction_count_percentile'),
-                        transaction_volume_percentile=data.get('transaction_volume_percentile')
+                        **data
                     )
-                    db.session.add(new_record)
+                    db.session.add(new_data)
             
+            # Commit changes
             db.session.commit()
+            return True
             
         except Exception as e:
-            logger.error(f"Error updating user data: {e}")
             db.session.rollback()
+            logger.error(f"Error processing user data for {protocol_name}: {str(e)}")
+            return False
     
-    def _calculate_annual_revenue(self, protocol_id: int) -> int:
-        """Calculate annual revenue for a protocol.
-        
-        Args:
-            protocol_id: ID of the protocol
-            
-        Returns:
-            Annual revenue in USD
-        """
+    def update_protocol_market_data(self, protocol_name, market_cap, price):
+        """Update market cap and price data for a protocol"""
         try:
-            # Get data for the last 12 months
-            today = datetime.utcnow().date()
-            start_date = today - relativedelta(months=12)
-            
-            # Query total fees across all sources
-            revenue_data = RevenueData.query.filter(
-                RevenueData.protocol_id == protocol_id,
-                RevenueData.month >= start_date
-            ).all()
-            
-            # Sum the revenue
-            total_revenue = sum(data.total_fees for data in revenue_data)
-            
-            return total_revenue
-        
-        except Exception as e:
-            logger.error(f"Error calculating annual revenue: {e}")
-            return 0
-    
-    def _calculate_and_save_scores(self, protocol_id: int, security_score: float) -> None:
-        """Calculate and save all scores for a protocol.
-        
-        Args:
-            protocol_id: ID of the protocol
-            security_score: Security score from Certik
-        """
-        try:
-            protocol = Protocol.query.get(protocol_id)
+            protocol = Protocol.query.filter_by(name=protocol_name).first()
             if not protocol:
-                logger.error(f"Protocol with ID {protocol_id} not found")
+                logger.error(f"Protocol {protocol_name} not found in database")
+                return False
+            
+            protocol.market_cap = market_cap
+            protocol.price = price
+            protocol.updated_at = datetime.utcnow()
+            
+            # Calculate annual revenue
+            self._calculate_annual_revenue(protocol)
+            
+            # Commit changes
+            db.session.commit()
+            return True
+            
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            logger.error(f"Database error updating market data for {protocol_name}: {str(e)}")
+            return False
+    
+    def update_all_protocols(self):
+        """Update data for all protocols in the database"""
+        protocols = Protocol.query.all()
+        
+        success_count = 0
+        for protocol in protocols:
+            revenue_success = self.process_revenue_data(protocol.name)
+            user_success = self.process_user_data(protocol.name)
+            
+            if revenue_success and user_success:
+                success_count += 1
+                
+        logger.info(f"Updated {success_count}/{len(protocols)} protocols successfully")
+        return success_count
+    
+    def _calculate_revenue_magnitude(self, protocol):
+        """Calculate revenue magnitude score relative to category peers"""
+        try:
+            # Get protocols in the same category
+            category_protocols = Protocol.query.filter_by(category=protocol.category).all()
+            if len(category_protocols) <= 1:
                 return
             
-            # Get the last 12 months of data
-            today = datetime.utcnow().date()
-            start_date = today - relativedelta(months=12)
+            # For each protocol, get the most recent month's total revenue
+            protocol_revenues = []
+            for p in category_protocols:
+                latest_revenue = RevenueData.query.filter_by(protocol_id=p.id) \
+                    .order_by(RevenueData.month.desc()).first()
+                
+                if latest_revenue:
+                    protocol_revenues.append((p.id, latest_revenue.revenue))
             
-            revenue_data = RevenueData.query.filter(
-                RevenueData.protocol_id == protocol_id,
-                RevenueData.month >= start_date
-            ).all()
+            if not protocol_revenues:
+                return
             
-            user_data = UserData.query.filter(
-                UserData.protocol_id == protocol_id,
-                UserData.month >= start_date
-            ).all()
+            # Calculate percentile ranks
+            protocol_ids, revenues = zip(*protocol_revenues)
+            revenues = np.array(revenues)
+            percentiles = {protocol_ids[i]: np.percentile(revenues, i * 100 / (len(revenues)-1)) 
+                          for i in range(len(revenues))}
             
-            # Convert to dictionary format for the calculator
-            revenue_dict_list = [
-                {
-                    'month': data.month,
-                    'total_fees': data.total_fees,
-                    'source': data.source,
-                    'mom_change': data.mom_change
-                }
-                for data in revenue_data
-            ]
+            # Update magnitude scores for all protocols in the category
+            for p_id, revenue in protocol_revenues:
+                magnitude_score = percentiles[p_id] / 100
+                
+                # Update all revenue data for this protocol
+                RevenueData.query.filter_by(protocol_id=p_id).update({
+                    'magnitude_score': magnitude_score
+                })
+                
+        except Exception as e:
+            logger.error(f"Error calculating revenue magnitude: {str(e)}")
+    
+    def _calculate_annual_revenue(self, protocol):
+        """Calculate annual revenue for a protocol"""
+        try:
+            # Get the last 12 months of revenue data
+            end_date = datetime.utcnow().date()
+            start_date = end_date - timedelta(days=365)
             
-            user_dict_list = [
-                {
-                    'month': data.month,
-                    'active_addresses': data.active_addresses,
-                    'transaction_count': data.transaction_count,
-                    'transaction_volume': data.transaction_volume,
-                    'active_address_growth_rate': data.active_address_growth_rate,
-                    'transaction_count_growth_rate': data.transaction_count_growth_rate,
-                    'transaction_volume_growth_rate': data.transaction_volume_growth_rate,
-                    'active_address_percentile': data.active_address_percentile,
-                    'transaction_count_percentile': data.transaction_count_percentile,
-                    'transaction_volume_percentile': data.transaction_volume_percentile
-                }
-                for data in user_data
-            ]
+            annual_revenue = db.session.query(db.func.sum(RevenueData.revenue)) \
+                .filter(RevenueData.protocol_id == protocol.id) \
+                .filter(RevenueData.month >= start_date) \
+                .filter(RevenueData.month <= end_date) \
+                .scalar() or 0
             
-            # Calculate scores
-            eqs = ScoreCalculator.calculate_eqs(revenue_dict_list, protocol.category)
-            ugs = ScoreCalculator.calculate_ugs(user_dict_list)
-            fvs = ScoreCalculator.calculate_fvs(protocol.market_cap, protocol.annual_revenue, protocol.category)
-            how3_score = ScoreCalculator.calculate_how3_score(eqs, ugs, fvs, security_score)
-            
-            # Create new score record
-            new_score = Score(
-                protocol_id=protocol_id,
-                calculated_at=datetime.utcnow(),
-                eqs=eqs,
-                ugs=ugs,
-                fvs=fvs,
-                ss=security_score,
-                how3_score=how3_score
-            )
-            
-            db.session.add(new_score)
-            db.session.commit()
-            
-            logger.info(f"Calculated scores for {protocol.name}: How3={how3_score}, EQS={eqs}, UGS={ugs}, FVS={fvs}, SS={security_score}")
+            protocol.annual_revenue = annual_revenue
             
         except Exception as e:
-            logger.error(f"Error calculating scores: {e}")
-            db.session.rollback()
+            logger.error(f"Error calculating annual revenue for {protocol.name}: {str(e)}")

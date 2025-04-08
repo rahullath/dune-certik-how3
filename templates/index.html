@@ -1,190 +1,129 @@
 {% extends 'layout.html' %}
 
-{% block title %}How3.io - Crypto Analytics for Traditional Investors{% endblock %}
+{% block title %}How3.io - Crypto Protocol Analytics{% endblock %}
 
 {% block content %}
 <div class="row mb-5">
-    <div class="col-lg-8">
-        <h1 class="display-4 mb-3">Crypto Analytics for Traditional Investors</h1>
-        <p class="lead">How3.io helps retail investors from traditional finance backgrounds make informed crypto investments without requiring specialized knowledge.</p>
-        <p>Our standardized scoring system analyzes the quality, growth, and value of top crypto protocols to help you compare them effectively.</p>
-        <div class="mt-4">
-            <a href="{{ url_for('protocols') }}" class="btn btn-primary me-2">Browse Protocols</a>
-            <a href="{{ url_for('compare_protocols') }}" class="btn btn-outline-light">Compare Protocols</a>
-        </div>
-    </div>
-    <div class="col-lg-4 d-flex align-items-center">
-        <div class="card w-100 bg-dark border-light">
-            <div class="card-body text-center">
-                <h5 class="card-title mb-3">How3 Score Components</h5>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="badge bg-info text-dark p-2">EQS</span>
-                    <span>Earnings Quality Score</span>
+    <div class="col-md-8">
+        <h1 class="display-4 mb-3">Welcome to How3.io</h1>
+        <p class="lead">
+            Simplified crypto protocol analytics for traditional investors.
+            Our scoring system helps you evaluate crypto protocols using familiar metrics from traditional finance.
+        </p>
+        <p>
+            Each protocol is scored across four key dimensions:
+        </p>
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <span class="badge bg-primary">EQS</span>
+                            Earnings Quality Score
+                        </h5>
+                        <p class="card-text">Measures the stability and magnitude of protocol revenue relative to peers.</p>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="badge bg-success p-2">UGS</span>
-                    <span>User Growth Score</span>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <span class="badge bg-success">UGS</span>
+                            User Growth Score
+                        </h5>
+                        <p class="card-text">Evaluates user adoption metrics and growth trends.</p>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="badge bg-warning text-dark p-2">FVS</span>
-                    <span>Fair Value Score</span>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <span class="badge bg-info">FVS</span>
+                            Fair Value Score
+                        </h5>
+                        <p class="card-text">Compares market cap to revenue to identify over/undervalued protocols.</p>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between">
-                    <span class="badge bg-danger p-2">SS</span>
-                    <span>Safety Score</span>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <span class="badge bg-warning">SS</span>
+                            Safety Score
+                        </h5>
+                        <p class="card-text">Assesses security and technical risk based on code audits and vulnerabilities.</p>
+                    </div>
                 </div>
             </div>
         </div>
+        <a href="/protocols" class="btn btn-primary">View All Protocols</a>
     </div>
-</div>
-
-{% if has_data %}
-<h2 class="mb-4">Top Protocols by How3 Score</h2>
-<div class="table-responsive mb-5">
-    <table class="table table-hover">
-        <thead>
-            <tr>
-                <th>Rank</th>
-                <th>Protocol</th>
-                <th>Category</th>
-                <th>How3 Score</th>
-                <th>EQS</th>
-                <th>UGS</th>
-                <th>FVS</th>
-                <th>SS</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for protocol, score in top_protocols %}
-            <tr class="clickable-row" data-href="{{ url_for('protocol_detail', protocol_id=protocol.id) }}">
-                <td>{{ loop.index }}</td>
-                <td>
-                    <strong>{{ protocol.name }}</strong>
-                    <span class="text-muted ms-2">{{ protocol.symbol }}</span>
-                </td>
-                <td><span class="badge bg-secondary">{{ protocol.category }}</span></td>
-                <td><span class="badge bg-primary p-2">{{ score.how3_score }}</span></td>
-                <td>{{ score.eqs | round(1) }}</td>
-                <td>{{ score.ugs | round(1) }}</td>
-                <td>{{ score.fvs | round(1) }}</td>
-                <td>{{ score.ss | round(1) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-<h2 class="mb-4">Category Leaders</h2>
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
-    {% for category, (protocol, score) in category_leaders.items() %}
-    <div class="col">
-        <div class="card h-100 bg-dark border-secondary">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="m-0">{{ category }}</h5>
-                <span class="badge bg-primary">{{ score.how3_score }}</span>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Categories</h5>
             </div>
             <div class="card-body">
-                <h5 class="card-title">{{ protocol.name }} <small class="text-muted">{{ protocol.symbol }}</small></h5>
-                <div class="row g-2 mt-2">
-                    <div class="col-6">
-                        <div class="d-flex justify-content-between">
-                            <span class="badge bg-info text-dark">EQS</span>
-                            <span>{{ score.eqs | round(1) }}</span>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="d-flex justify-content-between">
-                            <span class="badge bg-success">UGS</span>
-                            <span>{{ score.ugs | round(1) }}</span>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="d-flex justify-content-between">
-                            <span class="badge bg-warning text-dark">FVS</span>
-                            <span>{{ score.fvs | round(1) }}</span>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="d-flex justify-content-between">
-                            <span class="badge bg-danger">SS</span>
-                            <span>{{ score.ss | round(1) }}</span>
-                        </div>
-                    </div>
+                <div class="list-group">
+                    {% for category in categories %}
+                    <a href="/protocols?category={{ category.name }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        {{ category.name }}
+                        <span class="badge bg-secondary rounded-pill">
+                            {{ category.protocols|default(0) }}
+                        </span>
+                    </a>
+                    {% endfor %}
                 </div>
             </div>
-            <div class="card-footer">
-                <a href="{{ url_for('protocol_detail', protocol_id=protocol.id) }}" class="btn btn-sm btn-outline-light w-100">View Details</a>
+        </div>
+    </div>
+</div>
+
+<h2 class="mb-4">Top Protocols by How3 Score</h2>
+
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for protocol, score in protocols %}
+    <div class="col">
+        <div class="card h-100 protocol-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="card-title">{{ protocol.name }}</h5>
+                    <span class="badge rounded-pill 
+                        {% if score.how3_score >= 80 %}score-excellent
+                        {% elif score.how3_score >= 70 %}score-good
+                        {% elif score.how3_score >= 50 %}score-moderate
+                        {% else %}score-poor{% endif %}">
+                        {{ "%.1f"|format(score.how3_score) }}
+                    </span>
+                </div>
+                <h6 class="card-subtitle mb-2 text-muted">{{ protocol.symbol }} | {{ protocol.category }}</h6>
+                <p class="card-text">{{ protocol.description }}</p>
+                
+                <div class="d-flex justify-content-between mb-3">
+                    <div>
+                        <small class="d-block text-muted">Earnings Quality</small>
+                        <span class="badge bg-primary">{{ "%.1f"|format(score.earnings_quality_score) }}</span>
+                    </div>
+                    <div>
+                        <small class="d-block text-muted">User Growth</small>
+                        <span class="badge bg-success">{{ "%.1f"|format(score.user_growth_score) }}</span>
+                    </div>
+                    <div>
+                        <small class="d-block text-muted">Fair Value</small>
+                        <span class="badge bg-info">{{ "%.1f"|format(score.fair_value_score) }}</span>
+                    </div>
+                    <div>
+                        <small class="d-block text-muted">Safety</small>
+                        <span class="badge bg-warning">{{ "%.1f"|format(score.safety_score) }}</span>
+                    </div>
+                </div>
+                <a href="/protocol/{{ protocol.id }}" class="btn btn-sm btn-outline-secondary w-100">View Details</a>
             </div>
         </div>
     </div>
     {% endfor %}
 </div>
-{% else %}
-<div class="alert alert-info mb-5" role="alert">
-    <h4 class="alert-heading">Welcome to How3.io!</h4>
-    <p>Currently, there are no protocols in the database. Data will be added as protocols are analyzed.</p>
-    <hr>
-    <p class="mb-0">The platform will automatically fetch and process data from Dune Analytics and Certik once protocols are added to the system.</p>
-</div>
-{% endif %}
-</div>
-
-<div class="card bg-dark border-secondary mb-5">
-    <div class="card-body">
-        <h3 class="card-title">How3 Score Methodology</h3>
-        <p class="card-text">Our scoring system analyzes protocols across multiple dimensions to provide a comprehensive quality assessment.</p>
-        
-        <div class="row row-cols-1 row-cols-md-2 g-4 mt-2">
-            <div class="col">
-                <div class="card h-100 bg-dark border-info">
-                    <div class="card-body">
-                        <h5 class="card-title text-info">Earnings Quality Score (EQS)</h5>
-                        <p class="card-text">Measures both the stability and magnitude of protocol revenue. Protocols with consistent, non-fluctuating revenue streams score higher, indicating genuine utility rather than short-term hype.</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col">
-                <div class="card h-100 bg-dark border-success">
-                    <div class="card-body">
-                        <h5 class="card-title text-success">User Growth Score (UGS)</h5>
-                        <p class="card-text">Evaluates active users, transaction count, and volume month-over-month. This score helps identify protocols with strong user adoption and engagement, even if revenue is still developing.</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col">
-                <div class="card h-100 bg-dark border-warning">
-                    <div class="card-body">
-                        <h5 class="card-title text-warning">Fair Value Score (FVS)</h5>
-                        <p class="card-text">Compares market capitalization to revenue to identify over/undervalued protocols. Lower market cap to revenue ratios (e.g., 10x vs 500x) indicate potentially undervalued opportunities.</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col">
-                <div class="card h-100 bg-dark border-danger">
-                    <div class="card-body">
-                        <h5 class="card-title text-danger">Safety Score (SS)</h5>
-                        <p class="card-text">Incorporates security audit data from Certik Skynet to assess protocol safety and security. Higher scores indicate protocols with stronger security practices and fewer vulnerabilities.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    // Make table rows clickable
-    document.addEventListener('DOMContentLoaded', function() {
-        const rows = document.querySelectorAll('.clickable-row');
-        rows.forEach(row => {
-            row.addEventListener('click', function() {
-                window.location = this.dataset.href;
-            });
-        });
-    });
-</script>
 {% endblock %}
