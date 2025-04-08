@@ -1,0 +1,198 @@
+{
+  "chainlink": {
+    "protocol_schema": "chainlink",
+    "revenue_sources": [
+      {
+        "name": "vrf",
+        "table": "vrf_reward_daily",
+        "schema": "chainlink",
+        "timestamp_col": "date_start",
+        "fee_amount_col": "usd_amount"
+      },
+      {
+        "name": "automation",
+        "table": "automation_reward_daily",
+        "schema": "chainlink",
+        "timestamp_col": "date_start",
+        "fee_amount_col": "usd_amount"
+      },
+      {
+        "name": "fm",
+        "table": "fm_reward_daily",
+        "schema": "chainlink",
+        "timestamp_col": "date_start",
+        "fee_amount_col": "usd_amount"
+      },
+      {
+        "name": "ocr",
+        "table": "ocr_reward_daily",
+        "schema": "chainlink",
+        "timestamp_col": "date_start",
+        "fee_amount_col": "usd_amount"
+      },
+      {
+        "name": "ccip",
+        "table": "ccip_reward_daily",
+        "schema": "chainlink",
+        "timestamp_col": "date_start",
+        "fee_amount_col": "usd_amount"
+      }
+    ],
+    "user_addresses": [
+      {
+        "schema": "chainlink_ethereum",
+        "table": "linktoken_evt_transfer",
+        "user_address_col": "evt_tx_from",
+        "timestamp_col": "evt_block_time",
+        "amount_col": "value"
+      },
+      {
+        "schema": "chainlink_avalanche_c",
+        "table": "bridgetoken_evt_transfer",
+        "user_address_col": "evt_tx_from",
+        "timestamp_col": "evt_block_time",
+        "amount_col": "value"
+      },
+      {
+        "schema": "chainlink_fantom",
+        "table": "chainlink_evt_transfer",
+        "user_address_col": "evt_tx_from",
+        "timestamp_col": "evt_block_time",
+        "amount_col": "value"
+      },
+      {
+        "schema": "chainlink_ronin",
+        "table": "linktoken_evt_transfer",
+        "user_address_col": "evt_tx_from",
+        "timestamp_col": "evt_block_time",
+        "amount_col": "value"
+      },
+      {
+        "schema": "chainlink_optimism",
+        "table": "linktokenoptimism_evt_transfer",
+        "user_address_col": "evt_tx_from",
+        "timestamp_col": "evt_block_time",
+        "amount_col": "value"
+      },
+      {
+        "schema": "chainlink_multichain",
+        "table": "linktoken_evt_transfer",
+        "user_address_col": "evt_tx_from",
+        "timestamp_col": "evt_block_time",
+        "amount_col": "value"
+      },
+      {
+        "schema": "chainlink_polygon",
+        "table": "linktoken_evt_transfer",
+        "user_address_col": "evt_tx_from",
+        "timestamp_col": "evt_block_time",
+        "amount_col": "value"
+      }
+    ],
+    "market_cap_value": "(SELECT MAX(market_cap) FROM prices.usd WHERE symbol = 'LINK' AND minute > CURRENT_DATE - INTERVAL '1' day)",
+    "revenue_metrics": [
+      {
+        "table": "ocr_request_daily",
+        "schema": "chainlink",
+        "count_col": "num_requests",
+        "timestamp_col": "date_start"
+      },
+      {
+        "table": "fm_request_daily",
+        "schema": "chainlink",
+        "count_col": "num_requests",
+        "timestamp_col": "date_start"
+      },
+      {
+        "table": "ccip_send_requested_daily",
+        "schema": "chainlink",
+        "count_col": "num_requests",
+        "timestamp_col": "date_start"
+      },
+      {
+        "table": "automation_performed_daily",
+        "schema": "chainlink",
+        "count_col": "num_requests",
+        "timestamp_col": "date_start"
+      },
+      {
+        "table": "vrf_request_daily",
+        "schema": "chainlink",
+        "count_col": "num_requests",
+        "timestamp_col": "date_start"
+      }
+    ]
+  },
+  "uniswap": {
+    "protocol_schema": "uniswap",
+    "revenue_sources": [
+      {
+        "name": "v2",
+        "table": "trades",
+        "schema": "uniswap_v2",
+        "timestamp_col": "block_time",
+        "fee_amount_col": "fee_usd"
+      },
+      {
+        "name": "v3",
+        "table": "trades",
+        "schema": "uniswap_v3",
+        "timestamp_col": "block_time",
+        "fee_amount_col": "fee_usd"
+      }
+    ],
+    "user_addresses": [
+      {
+        "schema": "uniswap_v2",
+        "table": "trades",
+        "user_address_col": "taker",
+        "timestamp_col": "block_time",
+        "amount_col": "amount_usd"
+      },
+      {
+        "schema": "uniswap_v3",
+        "table": "trades",
+        "user_address_col": "taker",
+        "timestamp_col": "block_time",
+        "amount_col": "amount_usd"
+      }
+    ],
+    "market_cap_value": "(SELECT MAX(market_cap) FROM prices.usd WHERE symbol = 'UNI' AND minute > CURRENT_DATE - INTERVAL '1' day)"
+  },
+  "aave": {
+    "protocol_schema": "aave",
+    "revenue_sources": [
+      {
+        "name": "v2",
+        "table": "borrow",
+        "schema": "aave_v2",
+        "timestamp_col": "block_time",
+        "fee_amount_col": "interest_usd"
+      },
+      {
+        "name": "v3",
+        "table": "borrow",
+        "schema": "aave_v3",
+        "timestamp_col": "block_time",
+        "fee_amount_col": "interest_usd"
+      }
+    ],
+    "user_addresses": [
+      {
+        "schema": "aave_v2",
+        "table": "borrow",
+        "user_address_col": "borrower",
+        "timestamp_col": "block_time",
+        "amount_col": "amount_usd"
+      },
+      {
+        "schema": "aave_v3",
+        "table": "borrow",
+        "user_address_col": "borrower",
+        "timestamp_col": "block_time",
+        "amount_col": "amount_usd"
+      }
+    ],
+    "market_cap_value": "(SELECT MAX(market_cap) FROM prices.usd WHERE symbol = 'AAVE' AND minute > CURRENT_DATE - INTERVAL '1' day)"
+  }
+}
