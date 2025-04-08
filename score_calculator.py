@@ -102,15 +102,31 @@ class ScoreCalculator:
                 logger.warning(f"Insufficient revenue data for {protocol.name}")
                 return 0
             
-            # Calculate stability metric (lower variance is better)
+            # Calculate stability metric (looking for consistent revenues with low volatility)
             mom_changes = [rd.stability_score for rd in revenue_data if rd.stability_score is not None]
+            
             if mom_changes:
                 # Convert to numpy array for calculations
                 mom_changes = np.array(mom_changes)
                 
-                # Calculate stability score (inverse of standard deviation, normalized)
-                stability_raw = 1 / (1 + np.std(mom_changes))
+                # Calculate coefficient of variation (lower is better for stability)
+                # To handle negative values, we'll use a modified approach
+                mean_change = np.mean(mom_changes)
+                std_change = np.std(mom_changes)
+                
+                # Smaller standard deviation relative to mean indicates more stability
+                # We'll use inverse of variability as our raw stability score
+                # Adding a small constant to avoid division by zero
+                variability = std_change / (abs(mean_change) + 0.01)
+                stability_raw = 1 / (1 + variability)
+                
+                # Normalize: Higher value = more stable
                 stability_score = normalize_score(stability_raw, 0, 1)
+                
+                # Adjust stability score based on trend direction
+                # Positive average MoM change should increase the score
+                trend_factor = normalize_score(mean_change, -0.5, 0.5)  # Normalize growth rate
+                stability_score = 0.7 * stability_score + 0.3 * (trend_factor + 0.5)  # Weighted average, shift to 0-1 range
             else:
                 stability_score = 0
             
@@ -122,7 +138,7 @@ class ScoreCalculator:
             eqs = (
                 self.rev_stability_weight * stability_score + 
                 self.rev_magnitude_weight * magnitude_score
-            )
+            ) * 100  # Scale to 0-100
             
             return min(max(eqs, 0), 100)  # Ensure score is between 0 and 100
             
@@ -165,21 +181,27 @@ class ScoreCalculator:
                 logger.warning(f"No category data found for {protocol.category}")
                 return 0
             
-            # Calculate percentile ranks for each metric
-            active_addr_rank = calculate_percentile_rank(
-                [data.active_addresses for data in category_data],
-                latest_data.active_addresses
-            )
-            
-            tx_count_rank = calculate_percentile_rank(
-                [data.transaction_count for data in category_data],
-                latest_data.transaction_count
-            )
-            
-            tx_volume_rank = calculate_percentile_rank(
-                [data.transaction_volume for data in category_data],
-                latest_data.transaction_volume
-            )
+            # Use percentile ranks if available, otherwise calculate them
+            if latest_data.active_address_percentile and latest_data.transaction_count_percentile and latest_data.transaction_volume_percentile:
+                active_addr_rank = latest_data.active_address_percentile
+                tx_count_rank = latest_data.transaction_count_percentile
+                tx_volume_rank = latest_data.transaction_volume_percentile
+            else:
+                # Calculate percentile ranks for each metric as a fallback
+                active_addr_rank = calculate_percentile_rank(
+                    [data.active_addresses for data in category_data],
+                    latest_data.active_addresses
+                )
+                
+                tx_count_rank = calculate_percentile_rank(
+                    [data.transaction_count for data in category_data],
+                    latest_data.transaction_count
+                )
+                
+                tx_volume_rank = calculate_percentile_rank(
+                    [data.transaction_volume for data in category_data],
+                    latest_data.transaction_volume
+                )
             
             # Calculate growth trend factor (positive growth rates are better)
             growth_factors = []

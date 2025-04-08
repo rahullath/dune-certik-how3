@@ -174,7 +174,10 @@ def register_routes(app):
             'transaction_volume': ud.transaction_volume,
             'active_address_growth': ud.active_address_growth,
             'transaction_count_growth': ud.transaction_count_growth,
-            'transaction_volume_growth': ud.transaction_volume_growth
+            'transaction_volume_growth': ud.transaction_volume_growth,
+            'active_address_percentile': ud.active_address_percentile,
+            'transaction_count_percentile': ud.transaction_count_percentile,
+            'transaction_volume_percentile': ud.transaction_volume_percentile
         } for ud in user_data]
         
         return jsonify(data)

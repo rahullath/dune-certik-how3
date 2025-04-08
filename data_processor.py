@@ -43,10 +43,22 @@ class DataProcessor:
                     revenue_source=row.get('source', 'total')
                 ).first()
                 
+                # Get stability score metrics
+                stability_score = row.get('mom_change', 0)
+                
+                # Prepare magnitude score calculation data
+                avg_mom_change = row.get('avg_mom_change')
+                stddev_mom_change = row.get('stddev_mom_change')
+                
+                # Calculate a magnitude score based on revenue volume compared to historical values
+                # Higher revenue is better, normalized vs historical values
+                # For now, we'll use the stability_score as a proxy
+                # In a future enhancement, this could be compared against other protocols in the same category
+                
                 if existing_data:
                     # Update existing record
                     existing_data.revenue = row['total_fees']
-                    existing_data.stability_score = row.get('mom_change', 0)
+                    existing_data.stability_score = stability_score
                 else:
                     # Create new record
                     new_data = RevenueData(
@@ -54,7 +66,7 @@ class DataProcessor:
                         month=month_date,
                         revenue=row['total_fees'],
                         revenue_source=row.get('source', 'total'),
-                        stability_score=row.get('mom_change', 0)
+                        stability_score=stability_score
                     )
                     db.session.add(new_data)
             
@@ -101,7 +113,10 @@ class DataProcessor:
                     'transaction_volume': row.get('transaction_volume', 0),
                     'active_address_growth': row.get('active_address_growth_rate', 0),
                     'transaction_count_growth': row.get('transaction_count_growth_rate', 0),
-                    'transaction_volume_growth': row.get('transaction_volume_growth_rate', 0)
+                    'transaction_volume_growth': row.get('transaction_volume_growth_rate', 0),
+                    'active_address_percentile': row.get('active_address_percentile', 0),
+                    'transaction_count_percentile': row.get('transaction_count_percentile', 0),
+                    'transaction_volume_percentile': row.get('transaction_volume_percentile', 0)
                 }
                 
                 if existing_data:

@@ -25,7 +25,7 @@
                 {% elif sort_by == 'fair_value_score' %}Fair Value
                 {% elif sort_by == 'safety_score' %}Safety
                 {% else %}How3 Score{% endif %}
-                ({{ sort_order == 'desc' ? 'Descending' : 'Ascending' }})
+                ({% if sort_order == 'desc' %}Descending{% else %}Ascending{% endif %})
             </button>
             <ul class="dropdown-menu" aria-labelledby="sortDropdown">
                 <li><a class="dropdown-item {% if sort_by == 'how3_score' and sort_order == 'desc' %}active{% endif %}" href="/protocols?category={{ selected_category }}&sort_by=how3_score&sort_order=desc">How3 Score (High to Low)</a></li>

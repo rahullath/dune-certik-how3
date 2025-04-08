@@ -60,6 +60,10 @@ class UserData(db.Model):
     active_address_growth = db.Column(db.Float)
     transaction_count_growth = db.Column(db.Float)
     transaction_volume_growth = db.Column(db.Float)
+    # Percentile ranking data for comparing against other periods
+    active_address_percentile = db.Column(db.Float)
+    transaction_count_percentile = db.Column(db.Float)
+    transaction_volume_percentile = db.Column(db.Float)
     
     def __repr__(self):
         return f"<UserData {self.protocol_id} {self.month}>"

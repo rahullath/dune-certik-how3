@@ -1,4 +1,5 @@
 import logging
+import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime
@@ -11,6 +12,11 @@ logger = logging.getLogger(__name__)
 
 def init_scheduler(app):
     """Initialize the scheduler for recurring data updates"""
+    # Check if scheduler is disabled by environment variable
+    if os.environ.get('DISABLE_SCHEDULER', '').lower() == 'true':
+        logger.info("Scheduler disabled by environment variable")
+        return
+        
     config = get_config()
     scheduler = BackgroundScheduler()
     

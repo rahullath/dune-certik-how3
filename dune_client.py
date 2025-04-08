@@ -150,6 +150,7 @@ class DuneClient:
         
         today = datetime.now()
         data = []
+        mom_changes = []
         
         for i in range(months):
             month_date = today - timedelta(days=30*i)
@@ -165,6 +166,7 @@ class DuneClient:
             if i > 0:
                 prev_month = data[-1]["total_fees"]
                 mom_change = (monthly_revenue - prev_month) / prev_month
+                mom_changes.append(mom_change)
             
             data.append({
                 "month": month_str,
@@ -172,6 +174,16 @@ class DuneClient:
                 "source": "total",
                 "mom_change": mom_change
             })
+        
+        # Add stability and magnitude scores
+        avg_mom_change = np.mean(mom_changes) if mom_changes else 0
+        stddev_mom_change = np.std(mom_changes) if mom_changes else 0
+        
+        # Add these metrics to all rows
+        for row in data:
+            row["avg_mom_change"] = avg_mom_change
+            row["stddev_mom_change"] = stddev_mom_change
+            row["num_months"] = len(mom_changes)
         
         # Convert to pandas DataFrame and reverse order (oldest first)
         df = pd.DataFrame(data[::-1])
@@ -230,6 +242,12 @@ class DuneClient:
                 "transaction_volume_growth_rate": tx_volume_growth
             })
         
-        # Convert to pandas DataFrame and reverse order (oldest first)
+        # Convert to pandas DataFrame
         df = pd.DataFrame(data[::-1])
+        
+        # Calculate percentile rankings
+        df['active_address_percentile'] = df['active_addresses'].rank(pct=True)
+        df['transaction_count_percentile'] = df['transaction_count'].rank(pct=True)
+        df['transaction_volume_percentile'] = df['transaction_volume'].rank(pct=True)
+        
         return df

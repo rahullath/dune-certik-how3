@@ -72,13 +72,27 @@ def get_revenue_query(protocol, months=12):
               total_fees - LAG(total_fees) OVER (PARTITION BY source ORDER BY month)
             ) / NULLIF(LAG(total_fees) OVER (PARTITION BY source ORDER BY month), 0) AS mom_change
           FROM MonthlyFees
+        ), StabilityMagnitudeScores AS (
+          SELECT
+            source,
+            AVG(mom_change) AS avg_mom_change,
+            STDDEV(mom_change) AS stddev_mom_change,
+            COUNT(*) AS num_months
+          FROM RevenueStability
+          GROUP BY
+            source
         )
         SELECT
           month,
           source,
           total_fees,
-          mom_change
+          mom_change,
+          avg_mom_change,
+          stddev_mom_change,
+          num_months
         FROM RevenueStability
+        JOIN StabilityMagnitudeScores
+          USING (source)
         ORDER BY
           month DESC,
           source
@@ -118,13 +132,27 @@ def get_revenue_query(protocol, months=12):
               total_fees - LAG(total_fees) OVER (PARTITION BY source ORDER BY month)
             ) / NULLIF(LAG(total_fees) OVER (PARTITION BY source ORDER BY month), 0) AS mom_change
           FROM MonthlyFees
+        ), StabilityMagnitudeScores AS (
+          SELECT
+            source,
+            AVG(mom_change) AS avg_mom_change,
+            STDDEV(mom_change) AS stddev_mom_change,
+            COUNT(*) AS num_months
+          FROM RevenueStability
+          GROUP BY
+            source
         )
         SELECT
           month,
           source,
           total_fees,
-          mom_change
+          mom_change,
+          avg_mom_change,
+          stddev_mom_change,
+          num_months
         FROM RevenueStability
+        JOIN StabilityMagnitudeScores
+          USING (source)
         ORDER BY
           month DESC,
           source
@@ -164,13 +192,27 @@ def get_revenue_query(protocol, months=12):
               total_fees - LAG(total_fees) OVER (PARTITION BY source ORDER BY month)
             ) / NULLIF(LAG(total_fees) OVER (PARTITION BY source ORDER BY month), 0) AS mom_change
           FROM MonthlyFees
+        ), StabilityMagnitudeScores AS (
+          SELECT
+            source,
+            AVG(mom_change) AS avg_mom_change,
+            STDDEV(mom_change) AS stddev_mom_change,
+            COUNT(*) AS num_months
+          FROM RevenueStability
+          GROUP BY
+            source
         )
         SELECT
           month,
           source,
           total_fees,
-          mom_change
+          mom_change,
+          avg_mom_change,
+          stddev_mom_change,
+          num_months
         FROM RevenueStability
+        JOIN StabilityMagnitudeScores
+          USING (source)
         ORDER BY
           month DESC,
           source
@@ -198,13 +240,27 @@ def get_revenue_query(protocol, months=12):
               total_fees - LAG(total_fees) OVER (PARTITION BY source ORDER BY month)
             ) / NULLIF(LAG(total_fees) OVER (PARTITION BY source ORDER BY month), 0) AS mom_change
           FROM MonthlyFees
+        ), StabilityMagnitudeScores AS (
+          SELECT
+            source,
+            AVG(mom_change) AS avg_mom_change,
+            STDDEV(mom_change) AS stddev_mom_change,
+            COUNT(*) AS num_months
+          FROM RevenueStability
+          GROUP BY
+            source
         )
         SELECT
           month,
           source,
           total_fees,
-          mom_change
+          mom_change,
+          avg_mom_change,
+          stddev_mom_change,
+          num_months
         FROM RevenueStability
+        JOIN StabilityMagnitudeScores
+          USING (source)
         ORDER BY
           month DESC,
           source
@@ -338,6 +394,19 @@ def get_user_growth_query(protocol, months=12):
             ON m1.month = t1.month
           LEFT JOIN transaction_count_volume AS t2
             ON t1.month = t2.month + INTERVAL '1' MONTH
+        ), percentile_ranking AS (
+          SELECT
+            month,
+            active_addresses,
+            transaction_count,
+            transaction_volume,
+            active_address_growth_rate,
+            transaction_count_growth_rate,
+            transaction_volume_growth_rate,
+            PERCENT_RANK() OVER (ORDER BY active_addresses) AS active_address_percentile,
+            PERCENT_RANK() OVER (ORDER BY transaction_count) AS transaction_count_percentile,
+            PERCENT_RANK() OVER (ORDER BY transaction_volume) AS transaction_volume_percentile
+          FROM growth_rates
         )
         SELECT
           month,
@@ -346,8 +415,11 @@ def get_user_growth_query(protocol, months=12):
           transaction_volume,
           active_address_growth_rate,
           transaction_count_growth_rate,
-          transaction_volume_growth_rate
-        FROM growth_rates
+          transaction_volume_growth_rate,
+          active_address_percentile,
+          transaction_count_percentile,
+          transaction_volume_percentile
+        FROM percentile_ranking
         ORDER BY
           month DESC
         """
@@ -421,6 +493,19 @@ def get_user_growth_query(protocol, months=12):
             ON m1.month = t1.month
           LEFT JOIN transaction_count_volume AS t2
             ON t1.month = t2.month + INTERVAL '1' MONTH
+        ), percentile_ranking AS (
+          SELECT
+            month,
+            active_addresses,
+            transaction_count,
+            transaction_volume,
+            active_address_growth_rate,
+            transaction_count_growth_rate,
+            transaction_volume_growth_rate,
+            PERCENT_RANK() OVER (ORDER BY active_addresses) AS active_address_percentile,
+            PERCENT_RANK() OVER (ORDER BY transaction_count) AS transaction_count_percentile,
+            PERCENT_RANK() OVER (ORDER BY transaction_volume) AS transaction_volume_percentile
+          FROM growth_rates
         )
         SELECT
           month,
@@ -429,8 +514,11 @@ def get_user_growth_query(protocol, months=12):
           transaction_volume,
           active_address_growth_rate,
           transaction_count_growth_rate,
-          transaction_volume_growth_rate
-        FROM growth_rates
+          transaction_volume_growth_rate,
+          active_address_percentile,
+          transaction_count_percentile,
+          transaction_volume_percentile
+        FROM percentile_ranking
         ORDER BY
           month DESC
         """
@@ -588,6 +676,19 @@ def get_user_growth_query(protocol, months=12):
             ON m1.month = t1.month
           LEFT JOIN transaction_count_volume AS t2
             ON t1.month = t2.month + INTERVAL '1' MONTH
+        ), percentile_ranking AS (
+          SELECT
+            month,
+            active_addresses,
+            transaction_count,
+            transaction_volume,
+            active_address_growth_rate,
+            transaction_count_growth_rate,
+            transaction_volume_growth_rate,
+            PERCENT_RANK() OVER (ORDER BY active_addresses) AS active_address_percentile,
+            PERCENT_RANK() OVER (ORDER BY transaction_count) AS transaction_count_percentile,
+            PERCENT_RANK() OVER (ORDER BY transaction_volume) AS transaction_volume_percentile
+          FROM growth_rates
         )
         SELECT
           month,
@@ -596,8 +697,11 @@ def get_user_growth_query(protocol, months=12):
           transaction_volume,
           active_address_growth_rate,
           transaction_count_growth_rate,
-          transaction_volume_growth_rate
-        FROM growth_rates
+          transaction_volume_growth_rate,
+          active_address_percentile,
+          transaction_count_percentile,
+          transaction_volume_percentile
+        FROM percentile_ranking
         ORDER BY
           month DESC
         """
@@ -649,6 +753,19 @@ def get_user_growth_query(protocol, months=12):
             ON m1.month = t1.month
           LEFT JOIN transaction_count_volume AS t2
             ON t1.month = t2.month + INTERVAL '1' MONTH
+        ), percentile_ranking AS (
+          SELECT
+            month,
+            active_addresses,
+            transaction_count,
+            transaction_volume,
+            active_address_growth_rate,
+            transaction_count_growth_rate,
+            transaction_volume_growth_rate,
+            PERCENT_RANK() OVER (ORDER BY active_addresses) AS active_address_percentile,
+            PERCENT_RANK() OVER (ORDER BY transaction_count) AS transaction_count_percentile,
+            PERCENT_RANK() OVER (ORDER BY transaction_volume) AS transaction_volume_percentile
+          FROM growth_rates
         )
         SELECT
           month,
@@ -657,8 +774,11 @@ def get_user_growth_query(protocol, months=12):
           transaction_volume,
           active_address_growth_rate,
           transaction_count_growth_rate,
-          transaction_volume_growth_rate
-        FROM growth_rates
+          transaction_volume_growth_rate,
+          active_address_percentile,
+          transaction_count_percentile,
+          transaction_volume_percentile
+        FROM percentile_ranking
         ORDER BY
           month DESC
         """
