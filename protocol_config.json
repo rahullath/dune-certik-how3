@@ -1,0 +1,75 @@
+{
+  "protocols": {
+    "chainlink": {
+      "name": "Chainlink",
+      "symbol": "LINK",
+      "category": "Oracle",
+      "description": "Decentralized oracle network connecting smart contracts to real-world data",
+      "queries": {
+        "eqs": {
+          "query_id": 4953227,
+          "adjustments": {
+            "revenue_mapping": {
+              "ocr": "fm",
+              "comment": "OCR doesn't generate fees directly, attributing to FM (Price Feeds)"
+            },
+            "weights": {
+              "stability": 0.7,
+              "diversification": 0.3
+            },
+            "reference_revenue": 5000000
+          }
+        },
+        "ugs": {
+          "query_id": 4953009,
+          "adjustments": {
+            "active_addresses_weight": 0.4,
+            "transaction_count_weight": 0.3,
+            "transaction_volume_weight": 0.3
+          }
+        }
+      }
+    },
+    "uniswap": {
+      "name": "Uniswap",
+      "symbol": "UNI",
+      "category": "DEX",
+      "description": "Automated liquidity protocol for token swaps on Ethereum",
+      "queries": {
+        "eqs": {
+          "query_id": "0000000",
+          "adjustments": {
+            "weights": {
+              "stability": 0.7,
+              "diversification": 0.3
+            },
+            "reference_revenue": 10000000
+          }
+        },
+        "ugs": {
+          "query_id": "0000000"
+        }
+      }
+    }
+  },
+  "default_settings": {
+    "eqs": {
+      "weights": {
+        "stability": 0.7,
+        "diversification": 0.3
+      },
+      "reference_revenue": 5000000
+    },
+    "ugs": {
+      "active_addresses_weight": 0.4,
+      "transaction_count_weight": 0.3,
+      "transaction_volume_weight": 0.3
+    },
+    "fvs": {
+      "ps_ratio_threshold": 50
+    },
+    "ss": {
+      "default_score": 50
+    }
+  }
+}
