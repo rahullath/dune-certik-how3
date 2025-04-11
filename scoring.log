@@ -1,0 +1,6 @@
+2025-04-08 09:39:57,439 - centralized_processor - INFO - Loaded configuration with 2 protocols
+2025-04-08 09:39:57,445 - improved_eqs_calculator - INFO - chainlink stability score: 86.02
+2025-04-08 09:39:57,446 - improved_eqs_calculator - INFO - chainlink diversification score: 100.00
+2025-04-08 09:39:57,447 - improved_eqs_calculator - INFO - chainlink magnitude score: 100.00
+2025-04-08 09:39:57,447 - improved_eqs_calculator - INFO - Calculated EQS for chainlink: 90.22
+2025-04-08 09:39:57,459 - __main__ - INFO - Successfully generated report for chainlink
